@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.env
+agent_config.yaml
+credentials.json
+*.sqlite
+*.db
+.DS_Store
+Thumbs.db
