@@ -37,20 +37,20 @@ class TestComputeCPA:
 
     def test_converging_aircraft_conflict(self) -> None:
         """Two aircraft flying towards each other at same altitude must conflict."""
-        # Aircraft A flying NE at FL350
+        # Aircraft A flying NE at FL350 — close enough to close within 5 min
         aircraft_a = _make_aircraft(
             callsign="UAL123",
-            latitude=40.60,
-            longitude=-74.20,
+            latitude=40.65,
+            longitude=-74.10,
             altitude_ft=35000,
             heading_deg=45.0,
             speed_kts=450,
         )
-        # Aircraft B flying SW at FL350 — head-on
+        # Aircraft B flying SW at FL350 — head-on, close by
         aircraft_b = _make_aircraft(
             callsign="DAL456",
-            latitude=40.70,
-            longitude=-73.90,
+            latitude=40.68,
+            longitude=-73.95,
             altitude_ft=35000,
             heading_deg=225.0,
             speed_kts=460,
@@ -67,32 +67,30 @@ class TestComputeCPA:
         assert result.altitude_separation_ft == 0
 
     def test_diverging_aircraft_no_conflict(self) -> None:
-        """Two aircraft flying apart should not conflict."""
-        # Aircraft A flying north
+        """Two aircraft flying apart on parallel tracks should not conflict."""
+        # Aircraft A flying east at FL350
         aircraft_a = _make_aircraft(
             callsign="UAL123",
-            latitude=40.60,
+            latitude=40.00,
             longitude=-74.00,
             altitude_ft=35000,
-            heading_deg=0.0,
+            heading_deg=90.0,
             speed_kts=450,
         )
-        # Aircraft B flying south from same area
+        # Aircraft B flying west from same area but offset south
         aircraft_b = _make_aircraft(
             callsign="DAL456",
-            latitude=40.70,
+            latitude=38.00,
             longitude=-74.00,
             altitude_ft=35000,
-            heading_deg=180.0,
+            heading_deg=270.0,
             speed_kts=450,
         )
 
         result = compute_cpa(aircraft_a, aircraft_b)
 
-        # They are diverging, so CPA should be near current distance
+        # They are 120 nm apart and flying opposite directions on parallel tracks
         assert result.min_distance_nm > 0
-        # At same altitude diverging — may or may not conflict depending on current proximity
-        # But they are ~6 nm apart and diverging, so no conflict
         assert result.is_conflict is False
 
     def test_vertical_separation_prevents_conflict(self) -> None:
@@ -164,10 +162,10 @@ class TestScanPairwiseConflicts:
         assert result == []
 
     def test_two_diverging_aircraft_no_conflict(self) -> None:
-        """Two diverging aircraft should not produce a conflict."""
+        """Two diverging aircraft on parallel tracks should not produce a conflict."""
         aircraft = [
-            _make_aircraft(callsign="A", latitude=40.0, heading_deg=0.0),
-            _make_aircraft(callsign="B", latitude=41.0, heading_deg=180.0),
+            _make_aircraft(callsign="A", latitude=40.0, heading_deg=90.0),
+            _make_aircraft(callsign="B", latitude=38.0, heading_deg=270.0),
         ]
         result = scan_pairwise_conflicts(aircraft)
         assert result == []
