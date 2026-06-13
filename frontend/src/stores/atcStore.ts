@@ -23,6 +23,15 @@ export interface AtcState {
   /** ID of the currently loaded scenario. */
   activeScenarioId: string;
 
+  /** Radar center latitude from the active scenario. */
+  centerLatitude: number;
+
+  /** Radar center longitude from the active scenario. */
+  centerLongitude: number;
+
+  /** Elapsed seconds since scenario start. */
+  elapsedSeconds: number;
+
   /** Whether the component is currently fetching data. */
   isLoading: boolean;
 
@@ -55,6 +64,9 @@ const initialState: AtcState = {
   emergencies: [],
   lastUpdated: null,
   activeScenarioId: "SCN-A",
+  centerLatitude: 40.63,
+  centerLongitude: -73.68,
+  elapsedSeconds: 0,
   isLoading: false,
   error: null,
 };
@@ -71,6 +83,10 @@ export const useAtcStore = create<AtcStore>()((set) => ({
       weatherAdvisories: snapshot.weather_advisories,
       emergencies: snapshot.emergencies,
       lastUpdated: snapshot.timestamp,
+      activeScenarioId: snapshot.scenario_id,
+      centerLatitude: snapshot.center_latitude,
+      centerLongitude: snapshot.center_longitude,
+      elapsedSeconds: snapshot.elapsed_seconds,
       isLoading: false,
       error: null,
     }),
