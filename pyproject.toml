@@ -4,4 +4,6 @@ version = "0.1.0"
 description = "Multi-agent ATC decision support system with Band of Agents"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.13.4",
+]
