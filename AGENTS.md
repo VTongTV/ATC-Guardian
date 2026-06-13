@@ -225,6 +225,71 @@ Before refactoring, before changing a dependency, before modifying shared models
 
 ---
 
+## 5b. Branching & Pull Request Rules
+
+**All code lands on main via pull request ONLY. Never commit directly to main.**
+
+### Rule 5b.1: Branch Naming
+```
+<type>/<ticket>-<short-description>
+```
+
+Types:
+- `feat/` — New feature work (e.g. `feat/001-shared-models`)
+- `fix/` — Bug fixes (e.g. `fix/012-opensky-rate-limit`)
+- `refactor/` — Code restructure (e.g. `refactor/008-extract-cpa-module`)
+- `test/` — Test additions (e.g. `test/015-ml-unit-tests`)
+- `chore/` — Build/config (e.g. `chore/003-venv-setup`)
+- `docs/` — Documentation only (e.g. `docs/002-plan-v2`)
+
+`<ticket>` is a 3-digit zero-padded sequential number scoped to the branch.
+`<short-description>` is lowercase, hyphen-separated, max 4 words.
+
+### Rule 5b.2: Branch Lifecycle
+1. Create branch from latest `main`: `git checkout main && git pull && git checkout -b feat/001-shared-models`
+2. Make small, atomic commits on the branch (follow Rule 5.1–5.5)
+3. Push branch: `git push -u origin feat/001-shared-models`
+4. Open a Pull Request to `main`
+5. Wait for review/approval before merging
+6. Squash-merge or merge-commit (human decides per PR)
+7. Delete branch after merge
+
+### Rule 5b.3: Pull Request Format
+```markdown
+## What
+<!-- One-line summary of the change -->
+
+## Why
+<!-- Context and motivation -->
+
+## Changes
+<!-- Bullet list of concrete changes -->
+-
+
+## Testing
+<!-- How you verified this works -->
+-
+
+## Checklist
+- [ ] Code follows AGENTS.md rules
+- [ ] No placeholder/demo code
+- [ ] No secrets committed
+- [ ] Tests pass (or N/A for this PR)
+- [ ] Human consulted on design decisions
+```
+
+### Rule 5b.4: PR Size
+- One PR = one logical change (one feature, one fix, one refactor)
+- If a PR touches 3+ directories, split it
+- Max ~400 lines changed per PR. If larger, break into sequential PRs
+
+### Rule 5b.5: Main Is Always Deployable
+- `main` must always be in a working state
+- Never merge a broken PR
+- CI only runs on `main` — PR authors must verify locally first
+
+---
+
 ## 6. Development Workflow
 
 ### Rule 6.1: Read → Search → Ask → Code
