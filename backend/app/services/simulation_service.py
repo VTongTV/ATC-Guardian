@@ -6,9 +6,8 @@ and provides the current radar snapshot on demand.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
 
-from data.generator import evolve_scenario, generate_radar_snapshot
+from data.generator import generate_radar_snapshot
 from data.scenarios import ALL_SCENARIOS
 from shared.constants import SCENARIO_DURATION_SECONDS, SIMULATED_DATA_INTERVAL_SECONDS
 from shared.models import RadarSnapshot, ScenarioDefinition
@@ -116,18 +115,3 @@ class SimulationService:
         if self._task and not self._task.done():
             self._task.cancel()
         logger.info("Simulation loop stopped")
-
-    def start_background(self, interval_seconds: float | None = None) -> asyncio.Task:
-        """Start the simulation loop as a background asyncio task.
-
-        Must be called from within a running event loop (e.g. during
-        FastAPI lifespan startup).
-
-        Args:
-            interval_seconds: Seconds between simulation steps.
-
-        Returns:
-            The asyncio.Task running the simulation loop.
-        """
-        self._task = asyncio.create_task(self.start_loop(interval_seconds))
-        return self._task
