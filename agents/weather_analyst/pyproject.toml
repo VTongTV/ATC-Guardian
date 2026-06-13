@@ -1,0 +1,13 @@
+[project]
+name = "atc-guardian-weather-analyst"
+version = "0.1.0"
+description = "ATC Guardian Weather Analyst Agent — SIGMET monitoring and weather deviation via Band"
+requires-python = ">=3.12"
+dependencies = [
+    "band-sdk[crewai]>=1.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
