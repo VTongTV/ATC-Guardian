@@ -57,6 +57,10 @@ def generate_radar_snapshot(
 
     return RadarSnapshot(
         timestamp=now,
+        center_latitude=scenario.center_latitude,
+        center_longitude=scenario.center_longitude,
+        scenario_id=scenario.scenario_id,
+        elapsed_seconds=elapsed_seconds,
         aircraft=aircraft_states,
         conflicts=[],
         weather_advisories=[],
