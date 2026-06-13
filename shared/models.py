@@ -289,6 +289,10 @@ class RadarSnapshot(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     timestamp: datetime = Field(description="UTC time of this snapshot")
+    center_latitude: float = Field(ge=-90, le=90, description="Radar center latitude for display")
+    center_longitude: float = Field(ge=-180, le=180, description="Radar center longitude for display")
+    scenario_id: str = Field(description="Active scenario identifier")
+    elapsed_seconds: float = Field(ge=0, description="Seconds since scenario start")
     aircraft: list[AircraftState] = Field(description="All tracked aircraft states")
     conflicts: list[ConflictAdvisory] = Field(default_factory=list, description="Active conflict advisories")
     weather_advisories: list[WeatherAdvisory] = Field(default_factory=list, description="Active weather advisories")

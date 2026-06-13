@@ -4,8 +4,12 @@ import { useCallback, useEffect, useRef } from "react";
 import { useAtcStore } from "../stores/atcStore";
 import type { RadarSnapshot } from "../lib/types";
 
-/** Default backend URL (read from env at build time). */
-const API_BASE_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+/** Base URL for API requests.
+
+ * In development, Vite proxies /data requests to the backend (see vite.config.ts).
+ * In production, set VITE_API_URL to the backend's public URL.
+ */
+const API_BASE_URL: string = import.meta.env.VITE_API_URL ?? "";
 
 /** Polling interval in milliseconds. */
 const POLL_INTERVAL_MS = 4000;

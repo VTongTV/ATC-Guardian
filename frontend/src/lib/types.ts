@@ -69,6 +69,10 @@ export interface EmergencyDeclaration {
 /** Radar snapshot from the backend API. */
 export interface RadarSnapshot {
   timestamp: string;
+  center_latitude: number;
+  center_longitude: number;
+  scenario_id: string;
+  elapsed_seconds: number;
   aircraft: AircraftState[];
   conflicts: ConflictAdvisory[];
   weather_advisories: WeatherAdvisory[];
