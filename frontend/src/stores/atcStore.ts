@@ -37,6 +37,9 @@ export interface AtcState {
 
   /** Error message if the last fetch failed. */
   error: string | null;
+
+  /** Callsign of the currently selected aircraft, or null if none. */
+  selectedCallsign: string | null;
 }
 
 /** Actions for mutating ATC state. */
@@ -55,6 +58,9 @@ export interface AtcActions {
 
   /** Reset the store to initial state. */
   reset: () => void;
+
+  /** Select an aircraft by callsign, or deselect if null. Toggles if same callsign. */
+  selectAircraft: (callsign: string | null) => void;
 }
 
 const initialState: AtcState = {
@@ -69,6 +75,7 @@ const initialState: AtcState = {
   elapsedSeconds: 0,
   isLoading: false,
   error: null,
+  selectedCallsign: null,
 };
 
 export type AtcStore = AtcState & AtcActions;
@@ -99,6 +106,12 @@ export const useAtcStore = create<AtcStore>()((set) => ({
 
   setError: (error: string | null) =>
     set({ error, isLoading: false }),
+
+  selectAircraft: (callsign: string | null) =>
+    set((state) => ({
+      selectedCallsign:
+        state.selectedCallsign === callsign ? null : callsign,
+    })),
 
   reset: () => set(initialState),
 }));
