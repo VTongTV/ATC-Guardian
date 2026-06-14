@@ -22,6 +22,18 @@ export default defineConfig({
         target: "http://localhost:8000",
         changeOrigin: true,
       },
+      "/decisions": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/collaboration": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/whatif": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
     },
   },
 });

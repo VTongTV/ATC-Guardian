@@ -1,0 +1,33 @@
+# Render deployment config for the ATC Guardian backend.
+# Docs: https://render.com/docs/blueprint-spec
+# Deploys the FastAPI app as a web service. Set the environment variables
+# from .env.example in the Render dashboard (or via a secret group).
+
+services:
+  - type: web
+    name: atc-guardian-backend
+    runtime: python
+    pythonVersion: "3.12"
+    buildCommand: pip install uv && uv sync
+    startCommand: uv run uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /data/simulated
+    autoDeploy: true
+    envVars:
+      - key: BAND_MODE
+        value: sim
+      - key: DEFAULT_SCENARIO_ID
+        value: SCN-A
+      - key: SIMULATION_INTERVAL_SECONDS
+        value: "4.0"
+      - key: CORS_ORIGIN
+        # Set this to your Vercel frontend URL after deploying it.
+        sync: false
+      - key: LLM_PROVIDER
+        value: openrouter
+      # Secrets — set in the Render dashboard:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: BAND_API_KEY
+        sync: false
+      - key: BAND_ROOM_ID
+        sync: false
