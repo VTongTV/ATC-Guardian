@@ -5,7 +5,9 @@ description = "Multi-agent ATC decision support system with Band of Agents"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiosqlite>=0.21.0",
     "fastapi>=0.136.3",
+    "httpx>=0.28.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
     "uvicorn>=0.49.0",
