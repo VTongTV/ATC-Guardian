@@ -1,6 +1,6 @@
 /** ATC Guardian — scenario selection and data-mode controls. */
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useAtcStore } from "../stores/atcStore";
 
 /** Available scenario definitions. */
@@ -9,6 +9,28 @@ const SCENARIOS: { id: string; label: string }[] = [
   { id: "SCN-B", label: "Thunderstorm Line" },
   { id: "SCN-C", label: "Mayday at FL350" },
 ];
+
+/** Narration beats for the guided demo, per scenario + elapsed seconds. */
+const DEMO_NARRATION: Record<string, Record<number, string>> = {
+  "SCN-A": {
+    0: "Converging courses: UAL123 and DAL456 at FL350.",
+    8: "Conflict Detector flags CPA under 5nm -> Safety Reviewer.",
+    16: "Reviewer APPROVES -> Coordinator surfaces to controller.",
+  },
+  "SCN-B": {
+    0: "Severe-turbulence SIGMET over BAW200's approach.",
+    8: "Weather Analyst detects overlap -> deviation advisory.",
+    16: "Reviewer APPROVES -> Coordinator surfaces deviation.",
+  },
+  "SCN-C": {
+    0: "SWA770 squawks 7700, emergency descent.",
+    8: "Emergency Response DISTRESS -> recruits Ground Ops.",
+    16: "KJFK runway info -> Reviewer approves resolution.",
+  },
+};
+
+/** Seconds to dwell on each scenario during the guided demo. */
+const DEMO_SCENARIO_SECONDS = 24;
 
 /** ScenarioControls — dropdown, live/sim toggle, status indicators. */
 export function ScenarioControls(): React.ReactElement {
@@ -19,6 +41,46 @@ export function ScenarioControls(): React.ReactElement {
 
   const [isLive, setIsLive] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [demoPlaying, setDemoPlaying] = useState(false);
+  const [narration, setNarration] = useState<string>("");
+  const demoTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearDemoTimers = useCallback(() => {
+    demoTimers.current.forEach((t) => clearTimeout(t));
+    demoTimers.current = [];
+  }, []);
+
+  const startGuidedDemo = useCallback(async () => {
+    if (demoPlaying) {
+      clearDemoTimers();
+      setDemoPlaying(false);
+      setNarration("");
+      return;
+    }
+    setDemoPlaying(true);
+    for (const scenario of SCENARIOS) {
+      // Switch scenario
+      try {
+        await fetch(`/data/scenario/${scenario.id}`, { method: "POST" });
+        setActiveScenario(scenario.id);
+      } catch {
+        /* backend offline */
+      }
+      // Schedule narration beats
+      const beats = DEMO_NARRATION[scenario.id] ?? {};
+      for (const [elapsedStr, cue] of Object.entries(beats)) {
+        const elapsed = Number(elapsedStr);
+        const t = setTimeout(() => setNarration(cue), elapsed * 1000);
+        demoTimers.current.push(t);
+      }
+      // Dwell before next scenario
+      await new Promise((resolve) => setTimeout(resolve, DEMO_SCENARIO_SECONDS * 1000));
+    }
+    setDemoPlaying(false);
+    setNarration("Guided demo complete.");
+    const t = setTimeout(() => setNarration(""), 4000);
+    demoTimers.current.push(t);
+  }, [demoPlaying, clearDemoTimers, setActiveScenario]);
 
   const handleScenarioChange = useCallback(
     async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -134,6 +196,29 @@ export function ScenarioControls(): React.ReactElement {
           <div style={toggleThumbStyle} />
         </div>
       </div>
+
+      {/* Guided demo button */}
+      <button
+        type="button"
+        onClick={startGuidedDemo}
+        style={{
+          backgroundColor: demoPlaying ? "#3a1a1a" : "#1a3a1a",
+          color: demoPlaying ? "#ff3333" : "#33ff33",
+          border: `1px solid ${demoPlaying ? "#ff3333" : "#33ff33"}`,
+          fontFamily: "monospace",
+          fontSize: "0.65rem",
+          padding: "0.3rem",
+          cursor: "pointer",
+          letterSpacing: "0.05em",
+        }}
+      >
+        {demoPlaying ? "■ STOP DEMO" : "▶ PLAY GUIDED DEMO"}
+      </button>
+      {narration && (
+        <div style={{ fontSize: "0.6rem", color: "#ffaa00", padding: "0.2rem", borderLeft: "2px solid #ffaa00" }}>
+          {narration}
+        </div>
+      )}
 
       {/* Status indicators */}
       <div style={statRowStyle}>
