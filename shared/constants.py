@@ -159,3 +159,48 @@ RADAR_SWEEP_DURATION_SECONDS: float = 4.0
 
 RADAR_BLIP_TRAIL_LENGTH: int = 5
 """Number of historical positions to show as a trailing dot."""
+
+# ---------------------------------------------------------------------------
+# LLM provider endpoints (OpenRouter — free models for development)
+# ---------------------------------------------------------------------------
+
+OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+"""OpenRouter API base URL (OpenAI-compatible)."""
+
+OPENROUTER_DEFAULT_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
+"""Default free OpenRouter model — reliable tool-calling, 128K context."""
+
+OPENROUTER_ROUTER_MODEL: str = "openrouter/free"
+"""OpenRouter free router — auto-selects best free model per request."""
+
+OPENROUTER_FREE_MODELS: dict[str, str] = {
+    "reasoning": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "coding": "qwen/qwen3-coder:free",
+    "general": "meta-llama/llama-3.3-70b-instruct:free",
+    "lightweight": "openai/gpt-oss-20b:free",
+    "multimodal": "google/gemma-4-31b-it:free",
+}
+"""Curated free OpenRouter models by use-case. All support tool calling."""
+
+OPENROUTER_RATE_LIMIT_RPM: int = 20
+"""Free-tier rate limit in requests per minute (per model)."""
+
+OPENROUTER_RATE_LIMIT_RPD: int = 200
+"""Free-tier rate limit in requests per day (per model)."""
+
+# ---------------------------------------------------------------------------
+# AI/ML API (hackathon partner — primary LLM for demo)
+# ---------------------------------------------------------------------------
+
+AIMLAPI_BASE_URL: str = "https://api.aimlapi.com/v1"
+"""AI/ML API base URL (OpenAI-compatible)."""
+
+AIMLAPI_DEFAULT_MODEL: str = "gpt-4o"
+"""Default AI/ML API model (requires paid credits)."""
+
+# ---------------------------------------------------------------------------
+# Featherless (hackathon partner — secondary LLM)
+# ---------------------------------------------------------------------------
+
+FEATHERLESS_BASE_URL: str = "https://api.featherless.ai/v1"
+"""Featherless API base URL (OpenAI-compatible)."""
