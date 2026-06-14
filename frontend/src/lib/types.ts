@@ -78,3 +78,15 @@ export interface RadarSnapshot {
   weather_advisories: WeatherAdvisory[];
   emergencies: EmergencyDeclaration[];
 }
+
+/** Audit event from the /audit/events endpoint. */
+export interface AuditEvent {
+  id: number;
+  timestamp: string;
+  agent_name: string;
+  event_type: string;
+  content: string;
+  metadata_json: string | null;
+  target_agent: string | null;
+  scenario_id: string | null;
+}
