@@ -21,17 +21,81 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def resolve_llm_config(agent_model_env_var: str) -> tuple[str, str, str]:
+    """Resolve LLM provider config from shared environment variables.
+
+    Reads the ``LLM_PROVIDER`` env var and the corresponding provider
+    settings to determine the base URL, API key, and model name.  A
+    per-agent model override (``agent_model_env_var``) takes precedence
+    over the provider default.
+
+    Args:
+        agent_model_env_var: Name of the env var that holds the per-agent
+            model override (e.g. ``"CONFLICT_DETECTOR_MODEL"``).
+
+    Returns:
+        Tuple of ``(base_url, api_key, model_name)``.
+
+    Raises:
+        ValueError: If ``LLM_PROVIDER`` is not one of the supported values.
+        ValueError: If the resolved API key is empty or missing.
+    """
+    provider = os.getenv("LLM_PROVIDER", "openrouter")
+    agent_model = os.getenv(agent_model_env_var)
+
+    if provider == "openrouter":
+        base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+        api_key = os.getenv("OPENROUTER_API_KEY", "")
+        default_model = os.getenv(
+            "OPENROUTER_DEFAULT_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
+        )
+    elif provider == "aimlapi":
+        base_url = os.getenv("AIMLAPI_BASE_URL", "https://api.aimlapi.com/v1")
+        api_key = os.getenv("AIMLAPI_KEY", "")
+        default_model = os.getenv("AIMLAPI_DEFAULT_MODEL", "gpt-4o")
+    elif provider == "featherless":
+        base_url = os.getenv("FEATHERLESS_BASE_URL", "https://api.featherless.ai/v1")
+        api_key = os.getenv("FEATHERLESS_KEY", "")
+        default_model = "featherless/default"
+    else:
+        valid = "openrouter | aimlapi | featherless"
+        raise ValueError(
+            f"Unknown LLM_PROVIDER '{provider}'. Must be one of: {valid}"
+        )
+
+    if not api_key:
+        raise ValueError(
+            f"API key for provider '{provider}' is missing. "
+            f"Set the corresponding environment variable "
+            f"(OPENROUTER_API_KEY / AIMLAPI_KEY / FEATHERLESS_KEY)."
+        )
+
+    model = agent_model or default_model
+    return base_url, api_key, model
+
+
 def create_conflict_detector_adapter() -> PydanticAIAdapter:
     """Create the PydanticAIAdapter for the Conflict Detector agent.
 
-    Uses PydanticAI with AI/ML API as the model provider
-    (OpenAI-compatible endpoint for hackathon partner credit).
+    Uses PydanticAI with the multi-provider LLM configuration resolved
+    from shared environment variables.  The resolved API key and base
+    URL are injected into ``OPENAI_API_KEY`` and ``OPENAI_BASE_URL``
+    env vars so PydanticAI's built-in OpenAI client picks them up.
 
     Returns:
         Configured PydanticAIAdapter instance.
     """
-    base_url = os.getenv("AIMLAPI_BASE_URL", "https://api.aimlapi.com/v1")
-    model_name = os.getenv("CONFLICT_DETECTOR_MODEL", "gpt-4o")
+    base_url, api_key, model_name = resolve_llm_config("CONFLICT_DETECTOR_MODEL")
+    logger.info(
+        "LLM provider=%s model=%s base_url=%s",
+        os.getenv("LLM_PROVIDER", "openrouter"),
+        model_name,
+        base_url,
+    )
+
+    # Set env vars so PydanticAI's OpenAI client uses the resolved provider
+    os.environ["OPENAI_API_KEY"] = api_key
+    os.environ["OPENAI_BASE_URL"] = base_url
 
     return PydanticAIAdapter(
         model=f"openai:{model_name}",
@@ -41,6 +105,10 @@ def create_conflict_detector_adapter() -> PydanticAIAdapter:
 
 async def main() -> None:
     """Start the Conflict Detector agent and connect to Band."""
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
     adapter = create_conflict_detector_adapter()
 
     agent = Agent.create(
