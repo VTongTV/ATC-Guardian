@@ -6,6 +6,7 @@ import { useAtcStore } from "./stores/atcStore";
 import { ScenarioControls } from "./components/ScenarioControls";
 import { AuditTimeline } from "./components/AuditTimeline";
 import { AgentChatPanel } from "./components/AgentChatPanel";
+import { DecisionPanel } from "./components/DecisionPanel";
 
 function App(): React.ReactElement {
   useRadarData();
@@ -40,7 +41,7 @@ function App(): React.ReactElement {
         }}
       >
         <h1 style={{ fontSize: "1rem", margin: 0, letterSpacing: "0.1em" }}>
-          ATC GUARDIAN
+          ATC GUARDIAN <span style={{ fontSize: "0.65rem", color: "#888" }}>AI-assisted, human-decided</span>
         </h1>
         <div style={{ fontSize: "0.75rem", color: "#888" }}>
           {scenarioId} | T+{Math.round(elapsedSeconds)}s |{" "}
@@ -72,6 +73,9 @@ function App(): React.ReactElement {
         >
           {/* Scenario controls — fixed height */}
           <ScenarioControls />
+
+          {/* Controller decisions — human-on-the-loop approval */}
+          <DecisionPanel />
 
           {/* Audit timeline — fills remaining space */}
           <div style={{ flex: 1, overflow: "hidden" }}>
