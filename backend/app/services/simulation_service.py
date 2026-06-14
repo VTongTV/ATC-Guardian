@@ -10,7 +10,7 @@ import logging
 from typing import Callable, Awaitable
 
 from data.generator import generate_radar_snapshot
-from data.scenarios import ALL_SCENARIOS
+from data.scenarios import ALL_SCENARIOS, SCENARIO_SIGMETS
 from shared.constants import SCENARIO_DURATION_SECONDS, SIMULATED_DATA_INTERVAL_SECONDS
 from shared.models import RadarSnapshot, ScenarioDefinition
 
@@ -53,7 +53,9 @@ class SimulationService:
 
         self.active_scenario: ScenarioDefinition = ALL_SCENARIOS[scenario_id]
         self.elapsed_seconds: float = 0.0
-        self.current_snapshot: RadarSnapshot = generate_radar_snapshot(self.active_scenario, 0.0)
+        self.current_snapshot: RadarSnapshot = generate_radar_snapshot(
+            self.active_scenario, 0.0, self._active_sigmets()
+        )
         self.is_running: bool = False
         self._task: asyncio.Task | None = None
         self.broadcast_callback = broadcast_callback
@@ -72,7 +74,9 @@ class SimulationService:
 
         self.active_scenario = ALL_SCENARIOS[scenario_id]
         self.elapsed_seconds = 0.0
-        self.current_snapshot = generate_radar_snapshot(self.active_scenario, 0.0)
+        self.current_snapshot = generate_radar_snapshot(
+            self.active_scenario, 0.0, self._active_sigmets()
+        )
         logger.info("Loaded scenario %s: %s", scenario_id, self.active_scenario.name)
 
     def get_snapshot(self) -> RadarSnapshot:
@@ -100,7 +104,9 @@ class SimulationService:
             self.elapsed_seconds = 0.0
             logger.info("Scenario %s completed, resetting to t=0", self.active_scenario.scenario_id)
 
-        self.current_snapshot = generate_radar_snapshot(self.active_scenario, self.elapsed_seconds)
+        self.current_snapshot = generate_radar_snapshot(
+            self.active_scenario, self.elapsed_seconds, self._active_sigmets()
+        )
         return self.current_snapshot
 
     async def start_loop(self, interval_seconds: float | None = None) -> None:
@@ -136,3 +142,12 @@ class SimulationService:
         if self._task and not self._task.done():
             self._task.cancel()
         logger.info("Simulation loop stopped")
+
+    def _active_sigmets(self) -> list:
+        """Return the SIGMETs active for the current scenario.
+
+        Returns:
+            List of SIGMET models registered for the active scenario id.
+            Empty list when the scenario defines none.
+        """
+        return SCENARIO_SIGMETS.get(self.active_scenario.scenario_id, [])

@@ -7,9 +7,17 @@ and evolves them over a 5-minute window to demonstrate:
   C) Emergency squawk 7700 + descent
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from shared.models import AircraftState, ScenarioDefinition, ScenarioStep
+from shared.models import (
+    AircraftState,
+    AlertSeverity,
+    ScenarioDefinition,
+    ScenarioStep,
+    SIGMET,
+    SIGMETGeometry,
+    PositionGeographic,
+)
 
 
 def scenario_a_convergence() -> ScenarioDefinition:
@@ -177,3 +185,41 @@ ALL_SCENARIOS: dict[str, ScenarioDefinition] = {
     "SCN-B": scenario_b_weather_deviation(),
     "SCN-C": scenario_c_emergency(),
 }
+
+
+def _scenario_b_sigmet() -> SIGMET:
+    """Build the SIGMET active during scenario B.
+
+    A severe-turbulence polygon positioned across BAW200's approach
+    corridor so the Weather Analyst has a real hazard to detect.
+
+    Returns:
+        A SIGMET valid for one hour from now covering the JFK west
+        arrival gate.
+    """
+    now = datetime.now(timezone.utc)
+    return SIGMET(
+        sigmet_id="SIGM-001",
+        phenomenon="SEV_TURB",
+        severity=AlertSeverity.WARNING,
+        geometry=SIGMETGeometry(
+            points=[
+                PositionGeographic(latitude=40.58, longitude=-74.00),
+                PositionGeographic(latitude=40.62, longitude=-73.85),
+                PositionGeographic(latitude=40.52, longitude=-73.80),
+                PositionGeographic(latitude=40.48, longitude=-73.95),
+            ],
+            buffer_nm=10.0,
+        ),
+        base_ft=18000,
+        top_ft=26000,
+        valid_from=now,
+        valid_to=now + timedelta(hours=1),
+    )
+
+
+#: SIGMETs active per scenario. Scenarios not listed here have none.
+SCENARIO_SIGMETS: dict[str, list[SIGMET]] = {
+    "SCN-B": [_scenario_b_sigmet()],
+}
+
