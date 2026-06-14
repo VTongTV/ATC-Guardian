@@ -8,8 +8,8 @@ mode.
 
 These handlers are intentionally deterministic and conservative: they
 echo the detected condition, add a concise recommendation, and (for the
-coordinator) recruit the relevant specialist. The real Band agents
-replace them when ``BAND_MODE=live``.
+coordinator) surface a pending decision to the controller. The real
+Band agents replace them when ``BAND_MODE=live``.
 """
 
 from __future__ import annotations
@@ -22,6 +22,21 @@ from typing import Callable
 from shared.band_client import AgentHandler, BandInboundMessage, BandOutboundMessage
 
 logger = logging.getLogger(__name__)
+
+# Optional decision service, set by main.py so the coordinator handler
+# can create pending controller decisions. Kept as module state because
+# the SimulatedBandClient calls handlers as plain functions.
+_decision_service: "object | None" = None  # DecisionService at runtime
+
+
+def set_decision_service(service: object | None) -> None:
+    """Inject the decision service so coordinator can create proposals.
+
+    Args:
+        service: The DecisionService instance, or None to disable.
+    """
+    global _decision_service
+    _decision_service = service
 
 
 def _now_iso() -> str:
@@ -68,32 +83,80 @@ def _reply(
 async def coordinator_handler(
     inbound: BandOutboundMessage,
 ) -> list[BandInboundMessage]:
-    """Simulate the Coordinator acknowledging an advisory.
+    """Simulate the Coordinator surfacing a reviewed advisory for approval.
 
-    The Coordinator logs the advisory for the controller. It does NOT
-    re-recruit anyone — the specialist already delivered its finding, so
-    mentioning them again would cause an echo loop. The coordinator's
-    job at this point is to surface the decision to the human.
+    The coordinator creates a pending :class:`ControllerDecision`
+    (AI-assisted, human-decided) and acknowledges the chain. It does NOT
+    re-recruit anyone — the specialist already delivered its finding and
+    the reviewer already vetted it.
 
     Args:
-        inbound: The advisory or system message addressed to coordinator.
+        inbound: The verdict or advisory addressed to coordinator.
 
     Returns:
         A single acknowledgement reply with no further mentions.
     """
-    content = (inbound.metadata or {}).get("summary", inbound.content)
+    meta = inbound.metadata or {}
+    summary = meta.get("summary", inbound.content)
+    verdict = meta.get("verdict", "APPROVE")
+    recommendation = meta.get("recommendation") or meta.get("modification") or "see advisory"
+    advisory_kind = _kind_from_metadata(meta)
+    evidence = {k: v for k, v in meta.items() if k in {"cpa", "callsign", "sigmet_id", "phase"}}
+
+    # Create a pending controller decision (human-on-the-loop).
+    decision_summary = "No proposal created"
+    if _decision_service is not None and verdict in {"APPROVE", "MODIFY"}:
+        try:
+            decision = await _decision_service.create_proposal(  # type: ignore[attr-defined]
+                scenario_id=meta.get("scenario_id", "SCN-A"),
+                advisory_kind=advisory_kind,
+                summary=summary,
+                agent_recommendation=recommendation,
+                reviewer_verdict=verdict,
+                evidence=evidence,
+            )
+            decision_summary = f"Decision {decision.decision_id} pending controller approval"
+        except Exception:
+            logger.exception("Coordinator failed to create pending decision")
+            decision_summary = "Decision creation failed"
+    elif verdict == "REJECT":
+        decision_summary = "Reviewer REJECTED — no controller action needed"
+
     return [
         _reply(
             sender="coordinator",
             content=(
-                f"Coordinator logged advisory: {content}. "
-                "Surfacing to controller for decision. End of chain."
+                f"Coordinator: {summary}. Reviewer verdict {verdict}. "
+                f"{decision_summary}. End of chain."
             ),
             mentions=[],  # intentionally empty — terminates the cascade
             correlation_id=inbound.correlation_id,
             metadata={"role": "coordinator", "kind": "acknowledgement"},
         )
     ]
+
+
+def _kind_from_metadata(meta: dict) -> str:
+    """Map advisory metadata to a kind label for the decision service.
+
+    Looks at both the structured ``kind`` field and the human-readable
+    ``summary`` so a safety-verdict reply (whose kind is
+    ``safety_verdict``) still resolves to the originating condition type.
+
+    Args:
+        meta: The message metadata.
+
+    Returns:
+        One of conflict / weather / emergency / advisory.
+    """
+    haystack = f"{meta.get('kind', '')} {meta.get('summary', '')} {meta.get('callsign', '')}".lower()
+    if "conflict" in haystack:
+        return "conflict"
+    if "sigmet" in haystack or "weather" in haystack:
+        return "weather"
+    if "emergency" in haystack or "7700" in haystack or "distress" in haystack:
+        return "emergency"
+    return "advisory"
 
 
 async def conflict_detector_handler(
@@ -230,6 +293,10 @@ async def safety_reviewer_handler(
         + (f" | MODIFICATION: {modification}" if modification else "")
         + " Routing to @coordinator."
     )
+    # Preserve the specialist's recommendation and any callsign so the
+    # coordinator can build a complete controller decision.
+    recommendation = meta.get("recommendation")
+    callsign = meta.get("callsign")
     return [
         _reply(
             sender="safety-reviewer",
@@ -243,6 +310,9 @@ async def safety_reviewer_handler(
                 "verdict": verdict,
                 "reasoning": reasoning,
                 "modification": modification,
+                "recommendation": recommendation or modification or reasoning,
+                "callsign": callsign,
+                "cpa": cpa if cpa else None,
             },
         )
     ]

@@ -297,3 +297,55 @@ class RadarSnapshot(BaseModel):
     conflicts: list[ConflictAdvisory] = Field(default_factory=list, description="Active conflict advisories")
     weather_advisories: list[WeatherAdvisory] = Field(default_factory=list, description="Active weather advisories")
     emergencies: list[EmergencyDeclaration] = Field(default_factory=list, description="Active emergencies")
+
+
+# ---------------------------------------------------------------------------
+# Human-on-the-loop decision models
+# ---------------------------------------------------------------------------
+
+
+class DecisionStatus(str, Enum):
+    """Lifecycle status of a controller decision."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    MODIFIED = "modified"
+
+
+class ControllerDecision(BaseModel):
+    """A proposed action awaiting controller approval.
+
+    Encapsulates the ATC Guardian philosophy of 'AI-assisted,
+    human-decided': agents detect, review, and recommend, but the
+    controller holds the only authority to execute.
+
+    Attributes:
+        decision_id: Unique identifier.
+        created_at: UTC timestamp the proposal was created.
+        resolved_at: UTC timestamp the controller acted, if any.
+        status: Pending until the controller acts.
+        scenario_id: Active scenario when the proposal was raised.
+        advisory_kind: What kind of condition triggered it
+            (conflict / weather / emergency).
+        summary: One-line description for the UI.
+        agent_recommendation: The recommendation from the specialist +
+            reviewer (e.g. "vector UAL123 right 15 degrees").
+        reviewer_verdict: The Safety Reviewer's verdict.
+        evidence: Structured evidence (CPA, squawk, SIGMET id).
+        controller_action: APPROVED / REJECTED / MODIFIED once resolved.
+        controller_note: Free-text note the controller may add.
+    """
+
+    decision_id: str = Field(description="Unique decision identifier")
+    created_at: datetime = Field(description="UTC creation timestamp")
+    resolved_at: datetime | None = Field(default=None, description="UTC resolution timestamp")
+    status: DecisionStatus = Field(default=DecisionStatus.PENDING, description="Decision status")
+    scenario_id: str = Field(description="Scenario id when the proposal was raised")
+    advisory_kind: str = Field(description="conflict | weather | emergency")
+    summary: str = Field(description="One-line UI description")
+    agent_recommendation: str = Field(description="Specialist + reviewer recommendation")
+    reviewer_verdict: str = Field(description="Safety Reviewer verdict")
+    evidence: dict = Field(default_factory=dict, description="CPA / squawk / SIGMET evidence")
+    controller_action: str | None = Field(default=None, description="Controller's action, once resolved")
+    controller_note: str | None = Field(default=None, description="Free-text controller note")

@@ -17,12 +17,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.config import get_settings
 from backend.app.routers import audit as audit_router
 from backend.app.routers import data as data_router
+from backend.app.routers import decisions as decisions_router
 from backend.app.routers import weather as weather_router
 from backend.app.routers import websocket as ws_router
 from backend.app.services.advisory_ingester import AdvisoryIngester
 from backend.app.services.audit_service import AuditService
 from backend.app.services.band_poller import BandPoller
 from backend.app.services.band_poster import BandPoster
+from backend.app.services.decision_service import DecisionService
 from backend.app.services.opensky_client import OpenSkyClient
 from backend.app.services.simulation_service import SimulationService
 from backend.app.services.weather_client import AWCWeatherClient
@@ -73,6 +75,11 @@ async def lifespan(app: FastAPI):
     await audit_service.initialize()
     audit_router.set_audit_service(audit_service)
 
+    # Decision service (human-on-the-loop) — agent proposals await
+    # controller APPROVE/REJECT/MODIFY before execution.
+    decision_service = DecisionService(audit=audit_service)
+    decisions_router.set_decision_service(decision_service)
+
     # Simulation service (scenario data)
     service = SimulationService(
         scenario_id=settings.default_scenario_id,
@@ -103,9 +110,10 @@ async def lifespan(app: FastAPI):
         chat_id=settings.band_room_id,
     )
     if isinstance(band_client, SimulatedBandClient):
-        from backend.app.services.sim_agents import register_sim_agents
+        from backend.app.services.sim_agents import register_sim_agents, set_decision_service
 
         register_sim_agents(band_client)
+        set_decision_service(decision_service)
 
     poster = BandPoster(band_client)
     ingester = AdvisoryIngester(band_client, audit_service)
@@ -170,6 +178,7 @@ def create_app() -> FastAPI:
     app.include_router(data_router.router)
     app.include_router(weather_router.router)
     app.include_router(audit_router.router)
+    app.include_router(decisions_router.router)
     app.include_router(ws_router.router)
 
     return app
