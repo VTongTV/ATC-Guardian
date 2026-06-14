@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import get_settings
 from backend.app.routers import audit as audit_router
+from backend.app.routers import collaboration as collaboration_router
 from backend.app.routers import data as data_router
 from backend.app.routers import decisions as decisions_router
 from backend.app.routers import weather as weather_router
@@ -74,6 +75,7 @@ async def lifespan(app: FastAPI):
     audit_service = AuditService()
     await audit_service.initialize()
     audit_router.set_audit_service(audit_service)
+    collaboration_router.set_audit_service(audit_service)
 
     # Decision service (human-on-the-loop) — agent proposals await
     # controller APPROVE/REJECT/MODIFY before execution.
@@ -179,6 +181,7 @@ def create_app() -> FastAPI:
     app.include_router(weather_router.router)
     app.include_router(audit_router.router)
     app.include_router(decisions_router.router)
+    app.include_router(collaboration_router.router)
     app.include_router(ws_router.router)
 
     return app

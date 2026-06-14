@@ -7,6 +7,7 @@ import { ScenarioControls } from "./components/ScenarioControls";
 import { AuditTimeline } from "./components/AuditTimeline";
 import { AgentChatPanel } from "./components/AgentChatPanel";
 import { DecisionPanel } from "./components/DecisionPanel";
+import { CollaborationFlow } from "./components/CollaborationFlow";
 
 function App(): React.ReactElement {
   useRadarData();
@@ -166,6 +167,8 @@ function App(): React.ReactElement {
           <div style={{ flex: 1, overflow: "hidden" }}>
             <AgentChatPanel />
           </div>
+          {/* Collaboration flow — agent team graph with framework badges */}
+          <CollaborationFlow />
         </div>
       </div>
     </div>
