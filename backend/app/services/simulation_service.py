@@ -7,6 +7,8 @@ and provides the current radar snapshot on demand.
 import asyncio
 import logging
 
+from typing import Callable, Awaitable
+
 from data.generator import generate_radar_snapshot
 from data.scenarios import ALL_SCENARIOS
 from shared.constants import SCENARIO_DURATION_SECONDS, SIMULATED_DATA_INTERVAL_SECONDS
@@ -19,20 +21,29 @@ class SimulationService:
     """Manages the active scenario and produces time-stepped radar snapshots.
 
     The service runs a background loop that advances the simulation
-    clock and stores the latest snapshot for API consumers.
+    clock and stores the latest snapshot for API consumers. After
+    each advance, an optional broadcast callback is invoked to
+    push data to WebSocket clients.
 
     Attributes:
         active_scenario: The currently loaded scenario definition.
         elapsed_seconds: Seconds elapsed since scenario start.
         current_snapshot: The most recently generated radar snapshot.
         is_running: Whether the simulation loop is active.
+        broadcast_callback: Optional async callback invoked after each advance.
     """
 
-    def __init__(self, scenario_id: str = "SCN-A") -> None:
+    def __init__(
+        self,
+        scenario_id: str = "SCN-A",
+        broadcast_callback: Callable[[RadarSnapshot], Awaitable[None]] | None = None,
+    ) -> None:
         """Initialize the simulation service with a scenario.
 
         Args:
             scenario_id: Key into ALL_SCENARIOS to load on startup.
+            broadcast_callback: Optional async callable that receives
+                a RadarSnapshot after each advance. Used for WebSocket broadcast.
 
         Raises:
             KeyError: If scenario_id is not found in the scenario registry.
@@ -45,6 +56,7 @@ class SimulationService:
         self.current_snapshot: RadarSnapshot = generate_radar_snapshot(self.active_scenario, 0.0)
         self.is_running: bool = False
         self._task: asyncio.Task | None = None
+        self.broadcast_callback = broadcast_callback
 
     def load_scenario(self, scenario_id: str) -> None:
         """Switch to a different scenario and reset the clock.
@@ -95,7 +107,9 @@ class SimulationService:
         """Run the simulation in a continuous loop.
 
         Advances the clock at the specified interval until stopped
-        or the scenario completes a full cycle.
+        or the scenario completes a full cycle. After each advance,
+        the broadcast callback is invoked (if set) to push data
+        to WebSocket clients.
 
         Args:
             interval_seconds: Seconds between simulation steps.
@@ -107,6 +121,13 @@ class SimulationService:
 
         while self.is_running:
             self.advance()
+
+            if self.broadcast_callback is not None:
+                try:
+                    await self.broadcast_callback(self.current_snapshot)
+                except Exception:
+                    logger.exception("Broadcast callback failed")
+
             await asyncio.sleep(interval)
 
     def stop_loop(self) -> None:
