@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 # the SimulatedBandClient calls handlers as plain functions.
 _decision_service: "object | None" = None  # DecisionService at runtime
 
+# Optional Band client, set by main.py so handlers can emit structured
+# Band events (thought / tool_call / tool_result / error) into the room
+# for a richer audit timeline.
+_band_client: "object | None" = None  # BandClient at runtime
+
 
 def set_decision_service(service: object | None) -> None:
     """Inject the decision service so coordinator can create proposals.
@@ -37,6 +42,40 @@ def set_decision_service(service: object | None) -> None:
     """
     global _decision_service
     _decision_service = service
+
+
+def set_band_client(client: object | None) -> None:
+    """Inject the Band client so handlers can post structured events.
+
+    Args:
+        client: The BandClient instance, or None to disable event emission.
+    """
+    global _band_client
+    _band_client = client
+
+
+async def _emit_event(
+    agent: str, event_type: str, content: str, metadata: dict | None = None
+) -> None:
+    """Post a structured Band event if a client is wired.
+
+    Structured events (thought / tool_call / tool_result / error) make
+    the audit timeline richer and demonstrate deeper Band usage than
+    text-only messaging. Failures are swallowed so they never break the
+    collaboration loop.
+
+    Args:
+        agent: Agent identity producing the event.
+        event_type: One of thought / task / tool_call / tool_result / error.
+        content: Human-readable description.
+        metadata: Optional structured payload.
+    """
+    if _band_client is None:
+        return
+    try:
+        await _band_client.post_event(agent, event_type, content, metadata)  # type: ignore[attr-defined]
+    except Exception:
+        logger.exception("Failed to emit %s event from %s", event_type, agent)
 
 
 def _now_iso() -> str:
@@ -178,6 +217,23 @@ async def conflict_detector_handler(
     pair = f"{cpa.get('aircraft_a_callsign', '?')}/{cpa.get('aircraft_b_callsign', '?')}"
     dist = cpa.get("min_distance_nm", "?")
     tta = cpa.get("time_to_cpa_seconds", "?")
+
+    # Emit structured tool events so the audit timeline shows the
+    # detector's reasoning, not just the final advisory.
+    await _emit_event(
+        "conflict-detector",
+        "tool_call",
+        f"compute_cpa({cpa.get('aircraft_a_callsign', '?')}, "
+        f"{cpa.get('aircraft_b_callsign', '?')})",
+        metadata={"tool": "compute_cpa"},
+    )
+    await _emit_event(
+        "conflict-detector",
+        "tool_result",
+        f"CPA {dist} nm in {tta}s, conflict={cpa.get('is_conflict', False)}",
+        metadata={"cpa": cpa},
+    )
+
     return [
         _reply(
             sender="conflict-detector",
@@ -287,6 +343,15 @@ async def safety_reviewer_handler(
         verdict = "APPROVE"
         reasoning = "Advisory is consistent with current separation minima."
         modification = ""
+
+    # Emit a structured 'thought' event so the audit timeline shows the
+    # reviewer's reasoning, not just the final verdict.
+    await _emit_event(
+        "safety-reviewer",
+        "thought",
+        f"Cross-examining {kind} against ICAO minima: {reasoning}",
+        metadata={"verdict": verdict, "kind": kind, "cpa_nm": dist},
+    )
 
     content = (
         f"VERDICT: {verdict} | REASONING: {reasoning}"

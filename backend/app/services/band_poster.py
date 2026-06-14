@@ -43,12 +43,66 @@ class BandPoster:
     async def process_snapshot(self, snapshot: RadarSnapshot) -> None:
         """Inspect a snapshot and dispatch any new conditions to agents.
 
+        Applies ATC priority rules: when an active emergency is present,
+        lower-priority conflict and weather dispatches are vetoed
+        (deferred) — the Emergency Response agent holds the floor. This
+        mirrors how a real ATC priority stack works and is the 'agent
+        veto power' differentiator.
+
         Args:
             snapshot: The latest radar snapshot.
         """
-        await self._post_conflicts(snapshot)
+        emergency_active = bool(snapshot.emergencies)
+        # Emerencies always fire first and get top priority.
         await self._post_emergencies(snapshot)
-        await self._post_weather(snapshot)
+
+        if emergency_active:
+            await self._post_vetoed_lower_priority(snapshot)
+        else:
+            await self._post_conflicts(snapshot)
+            await self._post_weather(snapshot)
+
+    async def _post_vetoed_lower_priority(self, snapshot: RadarSnapshot) -> None:
+        """Defer conflict/weather advisories while an emergency is active.
+
+        Each deferred condition is recorded once so it does not re-veto
+        on every tick, and a structured Band event is emitted so the
+        audit timeline shows the Emergency Response agent exercising its
+        veto authority.
+
+        Args:
+            snapshot: The latest radar snapshot with an active emergency.
+        """
+        deferred = [*snapshot.conflicts, *snapshot.weather_advisories]
+        for advisory in deferred:
+            advisory_id = getattr(advisory, "advisory_id", None)
+            if advisory_id is None:
+                continue
+            key = f"vetoed:{advisory_id}"
+            if key in self._dispatched:
+                continue
+            self._dispatched.add(key)
+            kind = (
+                "conflict"
+                if advisory.__class__.__name__ == "ConflictAdvisory"
+                else "weather"
+            )
+            message = BandOutboundMessage(
+                sender="emergency-response",
+                content=(
+                    f"VETO: deferring {kind} advisory {advisory_id} — "
+                    "active emergency has priority per ATC rules."
+                ),
+                mentions=[],
+                metadata={
+                    "kind": "veto",
+                    "vetoed_kind": kind,
+                    "vetoed_advisory_id": advisory_id,
+                    "reason": "active emergency has priority",
+                },
+                correlation_id=advisory_id,
+            )
+            await self._safe_post(message, "emergency-response (veto)")
 
     def reset(self) -> None:
         """Clear the dispatched-key cache (e.g. on scenario change)."""

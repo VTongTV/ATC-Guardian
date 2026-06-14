@@ -112,10 +112,15 @@ async def lifespan(app: FastAPI):
         chat_id=settings.band_room_id,
     )
     if isinstance(band_client, SimulatedBandClient):
-        from backend.app.services.sim_agents import register_sim_agents, set_decision_service
+        from backend.app.services.sim_agents import (
+            register_sim_agents,
+            set_band_client,
+            set_decision_service,
+        )
 
         register_sim_agents(band_client)
         set_decision_service(decision_service)
+        set_band_client(band_client)
 
     poster = BandPoster(band_client)
     ingester = AdvisoryIngester(band_client, audit_service)
