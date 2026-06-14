@@ -161,7 +161,11 @@ class AppSettings(BaseSettings):
     opensky_password: str | None = Field(default=None, description="OpenSky Network password")
 
     # Band (optional — simulation-only mode if not set)
-    band_api_key: str | None = Field(default=None, description="Band API key for the coordinator agent")
+    band_mode: str = Field(
+        default="sim",
+        description="Band transport mode: sim (offline in-process) | live (real Band REST)",
+    )
+    band_api_key: str | None = Field(default=None, description="Band API key for the system-ingest identity")
     band_room_id: str | None = Field(default=None, description="Band room ID for agent communication")
 
     # LLM provider settings (embedded for backend convenience)
@@ -175,6 +179,7 @@ class AppSettings(BaseSettings):
     weather_analyst_model: str | None = Field(default=None, description="Override model for Weather Analyst agent")
     ground_ops_model: str | None = Field(default=None, description="Override model for Ground Ops agent")
     emergency_response_model: str | None = Field(default=None, description="Override model for Emergency Response agent")
+    safety_reviewer_model: str | None = Field(default=None, description="Override model for Safety Reviewer agent")
 
     # Coordinator Agent (Band credentials)
     coordinator_agent_id: str | None = Field(default=None, description="Band agent ID for Coordinator")
@@ -195,6 +200,10 @@ class AppSettings(BaseSettings):
     # Emergency Response Agent (Band credentials)
     emergency_response_agent_id: str | None = Field(default=None, description="Band agent ID for Emergency Response")
     emergency_response_api_key: str | None = Field(default=None, description="Band API key for Emergency Response")
+
+    # Safety Reviewer Agent (Band credentials) — adversarial reviewer
+    safety_reviewer_agent_id: str | None = Field(default=None, description="Band agent ID for Safety Reviewer")
+    safety_reviewer_api_key: str | None = Field(default=None, description="Band API key for Safety Reviewer")
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
