@@ -20,6 +20,7 @@ from backend.app.routers import collaboration as collaboration_router
 from backend.app.routers import data as data_router
 from backend.app.routers import decisions as decisions_router
 from backend.app.routers import weather as weather_router
+from backend.app.routers import whatif as whatif_router
 from backend.app.routers import websocket as ws_router
 from backend.app.services.advisory_ingester import AdvisoryIngester
 from backend.app.services.audit_service import AuditService
@@ -88,6 +89,9 @@ async def lifespan(app: FastAPI):
         broadcast_callback=ws_router.manager.broadcast_snapshot,
     )
     data_router.set_simulation_service(service)
+    whatif_router.set_simulation_service(service)
+    audit_router.set_simulation_service_for_export(service)
+    audit_router.set_decision_service_for_export(decision_service)
 
     # AWC weather client (proxied — no CORS on AWC)
     weather_client = AWCWeatherClient()
@@ -187,6 +191,7 @@ def create_app() -> FastAPI:
     app.include_router(audit_router.router)
     app.include_router(decisions_router.router)
     app.include_router(collaboration_router.router)
+    app.include_router(whatif_router.router)
     app.include_router(ws_router.router)
 
     return app

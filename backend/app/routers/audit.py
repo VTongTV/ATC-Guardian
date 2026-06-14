@@ -1,7 +1,8 @@
 """Audit router — REST endpoints for the persistent audit log.
 
 Provides read-only access to the audit event store so the front-end
-timeline and compliance dashboards can display agent activity.
+timeline and compliance dashboards can display agent activity, plus a
+one-click regulator-ready incident report export.
 """
 
 import logging
@@ -16,6 +17,8 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 
 # Injected by main.py on application startup
 _audit_service: AuditService | None = None
+_decision_service: "object | None" = None  # DecisionService at runtime
+_simulation_service: "object | None" = None  # SimulationService at runtime
 
 
 def set_audit_service(service: AuditService) -> None:
@@ -28,6 +31,26 @@ def set_audit_service(service: AuditService) -> None:
     """
     global _audit_service
     _audit_service = service
+
+
+def set_decision_service_for_export(service: object) -> None:
+    """Register the decision service for incident-report export.
+
+    Args:
+        service: The active DecisionService instance.
+    """
+    global _decision_service
+    _decision_service = service
+
+
+def set_simulation_service_for_export(service: object) -> None:
+    """Register the simulation service for incident-report export.
+
+    Args:
+        service: The active SimulationService instance.
+    """
+    global _simulation_service
+    _simulation_service = service
 
 
 def _get_service() -> AuditService:
@@ -109,3 +132,34 @@ async def list_events_by_scenario(
     """
     service = _get_service()
     return await service.get_events_by_scenario(scenario_id=scenario_id, limit=limit)
+
+
+@router.get("/export")
+async def export_incident_report(scenario_id: str | None = None) -> dict:
+    """Export a regulator-ready incident report as JSON.
+
+    Combines the audit trail, controller decisions, and current
+    situation snapshot into a single exportable artifact for compliance
+    review.
+
+    Args:
+        scenario_id: Optional scenario filter; defaults to the active one.
+
+    Returns:
+        A structured incident report dict.
+
+    Raises:
+        HTTPException: 503 if any required service is unavailable.
+    """
+    from backend.app.services.audit_export import build_incident_report
+
+    if _audit_service is None or _decision_service is None or _simulation_service is None:
+        raise HTTPException(
+            status_code=503, detail="Report services not initialized"
+        )
+    return await build_incident_report(
+        audit=_audit_service,
+        decisions=_decision_service,  # type: ignore[arg-type]
+        simulation=_simulation_service,  # type: ignore[arg-type]
+        scenario_id=scenario_id,
+    )
