@@ -87,3 +87,29 @@ async def collaboration_graph(limit: int = 200) -> dict:
         frameworks[agent.framework] = frameworks.get(agent.framework, 0) + 1
 
     return {"nodes": nodes, "edges": edges, "frameworks": frameworks}
+
+
+@router.get("/partner-routing")
+async def partner_routing() -> dict:
+    """Return the documented per-agent partner model assignments.
+
+    Exposes the rationale for each agent's recommended AI/ML API or
+    Featherless model so prize judges can review the technology choices.
+
+    Returns:
+        Dict mapping each agent to its recommended provider, model,
+        rationale, and prize category.
+    """
+    from shared.partner_routing import PARTNER_MODEL_ASSIGNMENTS
+
+    return {
+        agent: {
+            "provider": a.provider,
+            "model": a.model,
+            "rationale": a.rationale,
+            "prize_category": a.prize_category,
+        }
+        for agent, a in (
+            (a.agent_name, a) for a in PARTNER_MODEL_ASSIGNMENTS
+        )
+    }
