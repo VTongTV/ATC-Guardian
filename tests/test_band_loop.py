@@ -31,12 +31,13 @@ def _run(coro):
 # ---------------------------------------------------------------------------
 
 
-def test_all_five_agents_have_sim_handlers() -> None:
+def test_all_six_agents_have_sim_handlers() -> None:
     """Every required agent has a simulated handler registered."""
     expected = {
         "coordinator",
         "conflict-detector",
         "weather-analyst",
+        "safety-reviewer",
         "emergency-response",
         "ground-ops",
     }
@@ -99,8 +100,8 @@ def test_poster_reset_allows_redispatch() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_conflict_scenario_triggers_conflict_detector_and_coordinator() -> None:
-    """SCN-A: poster dispatches @conflict-detector, which replies to @coordinator."""
+def test_conflict_scenario_triggers_detector_then_reviewer_then_coordinator() -> None:
+    """SCN-A: conflict -> detector -> safety-reviewer -> coordinator."""
     client = create_band_client("sim")
     register_sim_agents(client)
     poster = BandPoster(client)
@@ -112,14 +113,21 @@ def test_conflict_scenario_triggers_conflict_detector_and_coordinator() -> None:
     senders = [m.sender for m in messages]
     assert "system-ingest" in senders
     assert "conflict-detector" in senders
+    assert "safety-reviewer" in senders
+    assert "coordinator" in senders
 
     detector_reply = next(m for m in messages if m.sender == "conflict-detector")
     assert "CONFLICT ADVISORY" in detector_reply.content
-    assert "coordinator" in detector_reply.mentions
+    # Detector routes to the reviewer, not straight to coordinator
+    assert "safety-reviewer" in detector_reply.mentions
+
+    verdict = next(m for m in messages if m.sender == "safety-reviewer")
+    assert "VERDICT" in verdict.content
+    assert verdict.metadata["verdict"] in {"APPROVE", "REJECT", "MODIFY"}
 
 
-def test_emergency_scenario_triggers_emergency_response_and_ground_ops() -> None:
-    """SCN-C: emergency dispatch cascades to ground-ops for runway info."""
+def test_emergency_scenario_full_cascade() -> None:
+    """SCN-C: emergency -> ER -> ground-ops -> ER -> reviewer -> coordinator."""
     client = create_band_client("sim")
     register_sim_agents(client)
     poster = BandPoster(client)
@@ -130,15 +138,16 @@ def test_emergency_scenario_triggers_emergency_response_and_ground_ops() -> None
     messages = _run(client.fetch_replies())
     senders = [m.sender for m in messages]
     assert "emergency-response" in senders
+    assert "ground-ops" in senders
+    assert "safety-reviewer" in senders
+    assert "coordinator" in senders
 
     er_reply = next(m for m in messages if m.sender == "emergency-response")
     assert "ground-ops" in er_reply.mentions
-    # Ground ops replies with runway info
-    assert "ground-ops" in senders
 
 
-def test_weather_scenario_triggers_weather_analyst() -> None:
-    """SCN-B: the SIGMET dispatch reaches the weather analyst."""
+def test_weather_scenario_routes_through_reviewer() -> None:
+    """SCN-B: weather analyst -> safety-reviewer -> coordinator."""
     client = create_band_client("sim")
     register_sim_agents(client)
     poster = BandPoster(client)
@@ -153,9 +162,11 @@ def test_weather_scenario_triggers_weather_analyst() -> None:
     messages = _run(client.fetch_replies())
     senders = [m.sender for m in messages]
     assert "weather-analyst" in senders
+    assert "safety-reviewer" in senders
 
     wx_reply = next(m for m in messages if m.sender == "weather-analyst")
     assert "SIGM-001" in wx_reply.content or "SIGMET" in wx_reply.content
+    assert "safety-reviewer" in wx_reply.mentions
 
 
 # ---------------------------------------------------------------------------

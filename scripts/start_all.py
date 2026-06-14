@@ -133,6 +133,7 @@ def main() -> None:
         "coordinator",
         "conflict_detector",
         "weather_analyst",
+        "safety_reviewer",
         "ground_ops",
         "emergency_response",
     ]

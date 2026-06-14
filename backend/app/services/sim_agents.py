@@ -101,11 +101,14 @@ async def conflict_detector_handler(
 ) -> list[BandInboundMessage]:
     """Simulate the Conflict Detector issuing a conflict advisory.
 
+    The advisory is routed to the Safety Reviewer (not directly to the
+    coordinator) so it is adversarially checked before action.
+
     Args:
         inbound: The triggering message (coordinator or system dispatch).
 
     Returns:
-        A conflict-advisory reply routed to coordinator.
+        A conflict-advisory reply routed to safety-reviewer.
     """
     meta = inbound.metadata or {}
     cpa = meta.get("cpa", {})
@@ -118,9 +121,9 @@ async def conflict_detector_handler(
             content=(
                 f"CONFLICT ADVISORY {pair}: CPA {dist} nm in {tta}s. "
                 "Recommend vectoring the trailing aircraft right 15° to restore "
-                "separation. Routing to @coordinator for action."
+                "separation. Submitting to @safety-reviewer for verification."
             ),
-            mentions=["coordinator"],
+            mentions=["safety-reviewer"],
             correlation_id=inbound.correlation_id,
             metadata={
                 "role": "conflict-detector",
@@ -138,11 +141,13 @@ async def weather_analyst_handler(
 ) -> list[BandInboundMessage]:
     """Simulate the Weather Analyst issuing a deviation advisory.
 
+    The advisory is routed to the Safety Reviewer for verification.
+
     Args:
         inbound: The triggering message.
 
     Returns:
-        A weather-advisory reply routed to coordinator.
+        A weather-advisory reply routed to safety-reviewer.
     """
     meta = inbound.metadata or {}
     sigmet_id = meta.get("sigmet_id", "UNKNOWN")
@@ -153,9 +158,9 @@ async def weather_analyst_handler(
             content=(
                 f"WEATHER ADVISORY: SIGMET {sigmet_id} affects {', '.join(affected)}. "
                 "Recommend 15 nm right deviation to clear the hazard area. "
-                "Routing to @coordinator."
+                "Submitting to @safety-reviewer for verification."
             ),
-            mentions=["coordinator"],
+            mentions=["safety-reviewer"],
             correlation_id=inbound.correlation_id,
             metadata={
                 "role": "weather-analyst",
@@ -169,6 +174,80 @@ async def weather_analyst_handler(
     ]
 
 
+async def safety_reviewer_handler(
+    inbound: BandOutboundMessage,
+) -> list[BandInboundMessage]:
+    """Simulate the Safety Reviewer cross-examining an advisory.
+
+    Applies ICAO separation minima to the proposed advisory and returns
+    a verdict. Conflicts with CPA under the lateral minimum and
+    insufficient vertical separation get APPROVED (action needed);
+    otherwise MODIFIED toward a more conservative turn. This is the
+    adversarial review loop the rubric rewards.
+
+    Args:
+        inbound: The advisory submitted by a specialist agent.
+
+    Returns:
+        A verdict reply routed to coordinator.
+    """
+    meta = inbound.metadata or {}
+    kind = meta.get("kind", "")
+    cpa = meta.get("cpa", {})
+    dist = cpa.get("min_distance_nm")
+    summary = meta.get("summary", "advisory")
+
+    if kind == "conflict_advisory" and isinstance(dist, (int, float)):
+        if dist < 3.0:
+            verdict = "APPROVE"
+            reasoning = (
+                f"CPA {dist} nm is below the 3.0 nm critical threshold and "
+                "vertical separation is insufficient; immediate vector required."
+            )
+            modification = ""
+        elif dist < 5.0:
+            verdict = "APPROVE"
+            reasoning = (
+                f"CPA {dist} nm violates the 5.0 nm lateral minimum; "
+                "recommended turn restores separation."
+            )
+            modification = ""
+        else:
+            verdict = "MODIFY"
+            reasoning = (
+                f"CPA {dist} nm is inside the alert band but the turn "
+                "direction should target the trailing aircraft specifically."
+            )
+            modification = "Turn the trailing (faster) aircraft, not the leader."
+    else:
+        # Weather / emergency / unknown: approve with a conservative note.
+        verdict = "APPROVE"
+        reasoning = "Advisory is consistent with current separation minima."
+        modification = ""
+
+    content = (
+        f"VERDICT: {verdict} | REASONING: {reasoning}"
+        + (f" | MODIFICATION: {modification}" if modification else "")
+        + " Routing to @coordinator."
+    )
+    return [
+        _reply(
+            sender="safety-reviewer",
+            content=content,
+            mentions=["coordinator"],
+            correlation_id=inbound.correlation_id,
+            metadata={
+                "role": "safety-reviewer",
+                "kind": "safety_verdict",
+                "summary": f"{verdict}: {summary}",
+                "verdict": verdict,
+                "reasoning": reasoning,
+                "modification": modification,
+            },
+        )
+    ]
+
+
 async def emergency_response_handler(
     inbound: BandOutboundMessage,
 ) -> list[BandInboundMessage]:
@@ -176,8 +255,8 @@ async def emergency_response_handler(
 
     Only recruits @ground-ops when the triggering message actually
     carries an emergency (kind=emergency). When ground-ops replies, the
-    reply's kind is ground_response — at that point ER just acknowledges
-    to coordinator without re-requesting runway info, breaking the
+    reply's kind is ground_response — at that point ER routes the final
+    plan to the Safety Reviewer before coordinator, breaking the
     cascade cleanly.
 
     Args:
@@ -191,15 +270,16 @@ async def emergency_response_handler(
     callsign = meta.get("callsign", "UNKNOWN")
 
     if kind == "ground_response":
-        # Ground ops came back with runway info — close the loop.
+        # Ground ops came back with runway info — route plan to reviewer.
         return [
             _reply(
                 sender="emergency-response",
                 content=(
                     f"Emergency Response: runway info received for {callsign}. "
-                    "Vectors to nearest suitable. Routing final plan to @coordinator."
+                    "Vectors to nearest suitable. Submitting final plan to "
+                    "@safety-reviewer."
                 ),
-                mentions=["coordinator"],
+                mentions=["safety-reviewer"],
                 correlation_id=inbound.correlation_id,
                 metadata={
                     "role": "emergency-response",
@@ -275,6 +355,7 @@ SIM_AGENT_HANDLERS: dict[str, AgentHandler] = {
     "coordinator": coordinator_handler,
     "conflict-detector": conflict_detector_handler,
     "weather-analyst": weather_analyst_handler,
+    "safety-reviewer": safety_reviewer_handler,
     "emergency-response": emergency_response_handler,
     "ground-ops": ground_ops_handler,
 }

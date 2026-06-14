@@ -1,0 +1,13 @@
+[project]
+name = "atc-guardian-safety-reviewer"
+version = "0.1.0"
+description = "ATC Guardian Safety Reviewer Agent — adversarial review of advisories before controller action"
+requires-python = ">=3.12"
+dependencies = [
+    "band-sdk[pydantic-ai]>=1.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

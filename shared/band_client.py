@@ -54,7 +54,10 @@ BAND_EVENT_TYPES: tuple[str, ...] = (
 
 #: Maximum number of @mention hops the simulated cascade will follow.
 #: Guarantees termination even if agents mention each other in a cycle.
-_MAX_CASCADE_DEPTH: int = 4
+#: Depth 5 covers the longest chain: system -> specialist -> reviewer
+#: -> coordinator, plus the emergency variant (system -> ER -> ground-ops
+#: -> ER -> reviewer -> coordinator).
+_MAX_CASCADE_DEPTH: int = 5
 
 
 class BandOutboundMessage(BaseModel):
