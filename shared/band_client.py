@@ -52,6 +52,10 @@ BAND_EVENT_TYPES: tuple[str, ...] = (
     "error",
 )
 
+#: Maximum number of @mention hops the simulated cascade will follow.
+#: Guarantees termination even if agents mention each other in a cycle.
+_MAX_CASCADE_DEPTH: int = 4
+
 
 class BandOutboundMessage(BaseModel):
     """A message the backend wants to post into the Band room.
@@ -230,6 +234,11 @@ class SimulatedBandClient:
     async def post_message(self, message: BandOutboundMessage) -> str:
         """Fan the message out to any mentioned simulated agents.
 
+        Agent replies that themselves @mention another registered agent
+        are cascaded transitively (mirroring how real Band routes
+        @mentions between agents), up to ``_MAX_CASCADE_DEPTH`` hops to
+        guarantee termination.
+
         Args:
             message: Outbound message. Each mentioned agent with a
                 registered handler is invoked; its replies are buffered.
@@ -254,31 +263,67 @@ class SimulatedBandClient:
         )
         self._buffer.append(echo)
 
-        # Dispatch to each mentioned agent that has a registered handler.
-        for agent_name in message.mentions:
+        # Seed the cascade with the original outbound message.
+        await self._cascade(message, echo, depth=0)
+
+        return posted_id
+
+    async def _cascade(
+        self,
+        outbound: BandOutboundMessage,
+        inbound: BandInboundMessage,
+        depth: int,
+    ) -> None:
+        """Recursively dispatch a message to mentioned agents.
+
+        Each mentioned agent's reply is buffered and, if it mentions
+        further registered agents, dispatched in turn.
+
+        Args:
+            outbound: The outbound message to hand to handlers.
+            inbound: The buffered inbound echo/reply these mentions came from.
+            depth: Current cascade depth (0 = original post).
+        """
+        if depth > _MAX_CASCADE_DEPTH:
+            logger.debug("Cascade depth limit reached at depth %d", depth)
+            return
+
+        for agent_name in outbound.mentions:
             handler = self._handlers.get(agent_name)
             if handler is None:
                 logger.debug("No simulated handler for '%s'", agent_name)
                 continue
             try:
-                replies = await handler(message)
+                replies = await handler(outbound)
             except Exception:
                 logger.exception(
-                    "Simulated agent '%s' raised while handling message %s",
+                    "Simulated agent '%s' raised while handling message",
                     agent_name,
-                    posted_id,
                 )
                 continue
+
             for reply in replies:
+                async with self._lock:
+                    self._counter += 1
+                    reply_id = f"sim-{self._counter}"
+                reply = reply.model_copy(update={"message_id": reply_id})
                 self._buffer.append(reply)
                 logger.debug(
-                    "Simulated '%s' replied to %s: %s",
+                    "Simulated '%s' replied: %s",
                     agent_name,
-                    posted_id,
                     reply.content[:80],
                 )
-
-        return posted_id
+                # If the reply mentions more agents, cascade further.
+                if reply.mentions:
+                    nested = BandOutboundMessage(
+                        sender=reply.sender,
+                        content=reply.content,
+                        mentions=list(reply.mentions),
+                        message_type=reply.message_type,
+                        metadata=reply.metadata,
+                        correlation_id=reply.correlation_id,
+                    )
+                    await self._cascade(nested, reply, depth=depth + 1)
 
     async def post_event(
         self, agent: str, event_type: str, content: str, metadata: dict | None = None
