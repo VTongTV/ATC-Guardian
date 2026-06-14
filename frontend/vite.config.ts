@@ -14,6 +14,14 @@ export default defineConfig({
         target: "ws://localhost:8000",
         ws: true,
       },
+      "/audit": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/weather": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
     },
   },
 });
