@@ -36,16 +36,23 @@ if not exist "%PYTHON%" (
 
 REM --- 1) backend ------------------------------------------------------------
 echo Starting backend on http://localhost:8000 ...
-start "ATC Backend" cmd /k ^
-    "cd /d "%ROOT%" && %PYCMD% -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload"
+start "ATC Backend" cmd /k "cd /d "%ROOT%" && %PYCMD% -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 REM give the backend a moment before the frontend polls it
 timeout /t 2 /nobreak >nul
 
 REM --- 2) frontend -----------------------------------------------------------
-echo Starting frontend on http://localhost:5173 ...
-start "ATC Frontend" cmd /k "cd /d "%ROOT%\frontend" && npm run dev"
+where npm >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARN] npm not found on PATH — skipping frontend.
+    echo        Install Node.js from https://nodejs.org to run the frontend.
+    goto :done
+)
 
+echo Starting frontend on http://localhost:5173 ...
+start "ATC Frontend" cmd /k "cd /d "%ROOT%\frontend" && npm.cmd run dev"
+
+:done
 echo.
 echo ============================================================
 echo  Backend:  http://localhost:8000
