@@ -9,6 +9,7 @@ Usage:
 """
 
 import logging
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -22,19 +23,20 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def run_cmd(cmd: list[str], cwd: Path, label: str) -> None:
+def run_cmd(cmd: list[str], cwd: Path, label: str, *, shell: bool = False) -> None:
     """Execute a command and log the result.
 
     Args:
         cmd: Command and arguments to execute.
         cwd: Working directory for the command.
         label: Human-readable label for logging.
+        shell: Pass shell=True to subprocess (needed on Windows for .cmd tools).
 
     Raises:
         SystemExit: If the command returns a non-zero exit code.
     """
     logger.info("Running: %s (in %s)", " ".join(cmd), cwd)
-    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, shell=shell)
     if result.returncode != 0:
         logger.error("%s FAILED:\n%s\n%s", label, result.stdout, result.stderr)
         sys.exit(1)
@@ -57,8 +59,12 @@ def setup_frontend() -> None:
         logger.warning("Frontend directory not found — skipping")
         return
 
+    if shutil.which("npm") is None:
+        logger.warning("npm not found on PATH — skipping frontend setup")
+        return
+
     logger.info("=== Setting up frontend ===")
-    run_cmd(["npm", "install"], frontend_dir, "Frontend npm install")
+    run_cmd(["npm", "install"], frontend_dir, "Frontend npm install", shell=True)
 
 
 def main() -> None:
