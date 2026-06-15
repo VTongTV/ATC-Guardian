@@ -1,23 +1,34 @@
-"""Partner technology model routing — documented per-agent model choices.
+"""Partner model routing — per-agent AI/ML API model choices.
 
-Pins specific models from the two hackathon partners (AI/ML API and
-Featherless) to the agents best suited to them, with a documented
-rationale for each choice. This is the configuration judges review for
-the 'Best Use of AI/ML API' ($1,000) and 'Best Use of Featherless'
-($200+) partner prizes.
+All six ATC Guardian agents route through AI/ML API, but each uses the
+frontier model best matched to its task. This "one API, many labs, right
+model per job" choice is itself the pitch for the 'Best Use of AI/ML API'
+($1,000) partner prize: a single key gives access to Zhipu GLM-5.1,
+DeepSeek V4 Pro/Flash, and Moonshot Kimi K2-6, and we pick the strongest
+fit for each agent rather than forcing one model everywhere.
 
-The model choices are intentionally principled:
-- AI/ML API's gpt-4o is used for agents that need reliable STRUCTURED
-  output (verdicts, advisories) on a time-critical loop, because its
-  function-calling / structured-output support is the most dependable.
-- Featherless open-source models are used for agents whose reasoning is
-  less latency-sensitive and benefits from a strong open model, which
-  also showcases Featherless's serverless open-source inference.
+The per-agent choices are principled:
 
-These are the recommended models when the corresponding provider is
-selected via the ``LLM_PROVIDER`` / per-agent ``*_MODEL`` env vars.
-The agents fall back to OpenRouter free models when no partner key is
-configured, so the system always runs.
+- Zhipu GLM-5.1 (``zhipu/glm-5.1``) — Safety Reviewer and Emergency
+  Response. Both return strict structured verdicts / phase
+  classifications that drive the human-on-the-loop decision or a 7700
+  response. GLM-5.1's dependable structured output at temperature 0
+  keeps these highest-stakes paths deterministic.
+- DeepSeek V4 Pro (``deepseek/deepseek-v4-pro``) — Conflict Detector and
+  Weather Analyst. Both need deep analytical reasoning (CPA advisory
+  generation, SIGMET interpretation + deviation routing) over rich
+  context. V4 Pro pairs that reasoning with reliable JSON output.
+- Moonshot Kimi K2-6 (``moonshot/kimi-k2-6``) — Coordinator. The
+  orchestration layer's multi-step @mention dispatch spans the whole
+  agent roster; Kimi's long-context instruction-following suits it.
+- DeepSeek V4 Flash (``deepseek/deepseek-v4-flash``) — Ground Ops.
+  Repeated bounded tool calls (runway / ATIS / NOTAM lookups) favour a
+  fast, cheap model; V4 Flash is the low-latency variant of the family.
+
+These are the recommended models when ``LLM_PROVIDER=aimlapi``. Each is
+applied via the per-agent ``*_MODEL`` env var (see
+:func:`env_overrides_for_active_provider`). Agents fall back to OpenRouter
+free models when no AI/ML API key is configured, so the system always runs.
 """
 
 from __future__ import annotations
@@ -27,12 +38,12 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PartnerModelAssignment:
-    """A recommended model from a partner provider for one agent.
+    """A recommended AI/ML API model for one agent.
 
     Attributes:
         agent_name: Agent identity this recommendation applies to.
-        provider: openrouter | aimlapi | featherless.
-        model: Model identifier to pass to the provider.
+        provider: Always ``aimlapi`` — all agents run through AI/ML API.
+        model: Model identifier passed to AI/ML API.
         rationale: One-paragraph justification for judges.
         prize_category: Which partner prize this counts toward.
     """
@@ -44,83 +55,87 @@ class PartnerModelAssignment:
     prize_category: str
 
 
-#: Recommended partner model per agent. To activate, set the env vars
-#: shown in each assignment's ``env`` note in the README.
+#: Recommended AI/ML API model per agent. To activate, set
+#: ``LLM_PROVIDER=aimlapi`` plus the per-agent ``*_MODEL`` overrides from
+#: :func:`env_overrides_for_active_provider` (documented in the README).
 PARTNER_MODEL_ASSIGNMENTS: list[PartnerModelAssignment] = [
     PartnerModelAssignment(
         agent_name="conflict-detector",
         provider="aimlapi",
-        model="gpt-4o",
+        model="deepseek/deepseek-v4-pro",
         rationale=(
-            "Conflict detection is the most time-critical loop in ATC Guardian "
-            "(seconds matter). AI/ML API's gpt-4o has the most dependable "
-            "function-calling and structured-output support of any available "
-            "model, so the Conflict Detector's CPA advisories are reliably "
-            "well-formed JSON every time — essential when the Safety Reviewer "
-            "and the controller both parse them downstream."
+            "Conflict detection is the most time-critical loop in ATC "
+            "Guardian (seconds matter). DeepSeek V4 Pro pairs strong "
+            "analytical reasoning with reliable structured JSON output, so "
+            "the Conflict Detector's CPA advisories are well-formed every "
+            "time — essential because the Safety Reviewer and the controller "
+            "both parse them downstream."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="safety-reviewer",
         provider="aimlapi",
-        model="gpt-4o",
+        model="zhipu/glm-5.1",
         rationale=(
             "The adversarial Safety Reviewer returns an explicit "
             "APPROVE/REJECT/MODIFY verdict that drives the human-on-the-loop "
-            "decision. gpt-4o's structured outputs guarantee the verdict field "
-            "is always one of the three allowed values, so the DecisionPanel "
-            "never receives an unparseable recommendation."
+            "decision. GLM-5.1's dependable structured output at temperature 0 "
+            "guarantees the verdict field is always one of the three allowed "
+            "values, so the DecisionPanel never receives an unparseable "
+            "recommendation."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="weather-analyst",
-        provider="featherless",
-        model="Qwen/Qwen3.5-72B-Instruct",
+        provider="aimlapi",
+        model="deepseek/deepseek-v4-pro",
         rationale=(
-            "Weather analysis (SIGMET interpretation, deviation routing) is "
-            "less latency-sensitive and rewards strong open-source reasoning. "
-            "Featherless's serverless hosting of Qwen 3.5 gives the Weather "
-            "Analyst a capable open model while showcasing Featherless's "
-            "value: thousands of Hugging Face models behind one API."
+            "Weather analysis (SIGMET interpretation, deviation routing) "
+            "rewards deep reasoning over unstructured meteorological text. "
+            "DeepSeek V4 Pro is the strongest analytical model on AI/ML API "
+            "for this, turning raw SIGMET polygons into a crisp deviation "
+            "advisory the Coordinator can act on."
         ),
-        prize_category="Best Use of Featherless",
+        prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="coordinator",
-        provider="featherless",
-        model="Qwen/Qwen3.5-72B-Instruct",
+        provider="aimlapi",
+        model="moonshot/kimi-k2-6",
         rationale=(
-            "The Coordinator's multi-step dispatch benefits from a strong "
-            "open model with good instruction-following. Featherless hosts "
-            "Qwen 3.5 serverlessly, which keeps the orchestration layer on "
-            "open-source infrastructure."
+            "The Coordinator's multi-step dispatch spans the whole agent "
+            "roster through @mentions. Moonshot Kimi K2-6's long-context "
+            "instruction-following keeps the full mention/dispatch graph in "
+            "view, so the right specialist is routed each turn."
         ),
-        prize_category="Best Use of Featherless",
+        prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="emergency-response",
         provider="aimlapi",
-        model="gpt-4o",
+        model="zhipu/glm-5.1",
         rationale=(
             "7700 emergencies are the highest-stakes path in the system. "
-            "gpt-4o via AI/ML API gives the most reliable structured output "
-            "at temperature 0, so the emergency phase classification and "
-            "resolution plan are deterministic and trustworthy."
+            "GLM-5.1 via AI/ML API gives the most reproducible structured "
+            "output at temperature 0, so the emergency phase classification "
+            "and resolution plan are deterministic and trustworthy under "
+            "pressure."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="ground-ops",
-        provider="featherless",
-        model="meta-llama/Llama-4-Scout-17B-16E-Instruct",
+        provider="aimlapi",
+        model="deepseek/deepseek-v4-flash",
         rationale=(
-            "Ground Ops performs bounded tool-call lookups (runway/ATIS/NOTAM) "
-            "that suit a competent open model. Featherless's Llama 4 hosting "
-            "keeps this agent on open-source inference."
+            "Ground Ops performs repeated bounded tool-call lookups "
+            "(runway / ATIS / NOTAM) that favour speed and cost over deep "
+            "reasoning. DeepSeek V4 Flash is the low-latency variant of the "
+            "V4 family, ideal for these frequent, simple structured calls."
         ),
-        prize_category="Best Use of Featherless",
+        prize_category="Best Use of AI/ML API",
     ),
 ]
 
@@ -128,8 +143,12 @@ PARTNER_MODEL_ASSIGNMENTS: list[PartnerModelAssignment] = [
 def assignments_by_provider(provider: str) -> list[PartnerModelAssignment]:
     """Return all assignments for a given provider.
 
+    All agents currently route through AI/ML API, so passing
+    ``"aimlapi"`` returns every assignment and any other provider returns
+    an empty list.
+
     Args:
-        provider: openrouter | aimlapi | featherless.
+        provider: Provider to filter by (e.g. ``aimlapi``).
 
     Returns:
         Matching PartnerModelAssignment list.
@@ -138,13 +157,14 @@ def assignments_by_provider(provider: str) -> list[PartnerModelAssignment]:
 
 
 def env_overrides_for_active_provider(provider: str) -> dict[str, str]:
-    """Build the per-agent *_MODEL env-var map for a provider.
+    """Build the per-agent ``*_MODEL`` env-var map for a provider.
 
     Args:
         provider: The provider to activate assignments for.
 
     Returns:
-        Dict mapping env-var name (e.g. CONFLICT_DETECTOR_MODEL) to model id.
+        Dict mapping env-var name (e.g. ``CONFLICT_DETECTOR_MODEL``) to
+        model id.
     """
     env_suffix = {
         "coordinator": "COORDINATOR_MODEL",

@@ -195,12 +195,15 @@ OPENROUTER_RATE_LIMIT_RPD: int = 200
 AIMLAPI_BASE_URL: str = "https://api.aimlapi.com/v1"
 """AI/ML API base URL (OpenAI-compatible)."""
 
-AIMLAPI_DEFAULT_MODEL: str = "gpt-4o"
-"""Default AI/ML API model (requires paid credits)."""
+AIMLAPI_DEFAULT_MODEL: str = "deepseek/deepseek-v4-pro"
+"""Default AI/ML API model. DeepSeek V4 Pro pairs strong analytical
+reasoning with reliable structured JSON output — the safest single
+fallback when an agent has no per-agent model override. Other models in
+the pool (GPT-5.1, Gemini 3.5 Flash, GLM-5.1, Kimi K2-6) are applied via
+the per-agent overrides in partner_routing.py."""
 
-# ---------------------------------------------------------------------------
-# Featherless (hackathon partner — secondary LLM)
-# ---------------------------------------------------------------------------
+AIMLAPI_REASONING_MODEL: str = "openai/gpt-5-1"
+"""AI/ML API reasoning variant for analysis-heavy agents."""
 
-FEATHERLESS_BASE_URL: str = "https://api.featherless.ai/v1"
-"""Featherless API base URL (OpenAI-compatible)."""
+AIMLAPI_FAST_MODEL: str = "google/gemini-3.5-flash"
+"""Low-latency AI/ML API model for tool-call-heavy agents."""

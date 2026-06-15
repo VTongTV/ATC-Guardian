@@ -1,7 +1,8 @@
 """Tests for the partner model routing configuration.
 
-Verifies every agent has a documented partner model assignment, the
-rationale is non-trivial, and the prize categories match the partners.
+Verifies every agent has a documented AI/ML API model assignment, the
+rationale is non-trivial, and the per-agent models match the confirmed
+routing decision (one AI/ML API key, right model per job).
 """
 
 from backend.app.routers import collaboration as collab_router
@@ -11,18 +12,21 @@ from shared.partner_routing import (
     env_overrides_for_active_provider,
 )
 
+#: Confirmed per-agent AI/ML API model assignments.
+EXPECTED_MODELS: dict[str, str] = {
+    "safety-reviewer": "zhipu/glm-5.1",
+    "conflict-detector": "deepseek/deepseek-v4-pro",
+    "emergency-response": "zhipu/glm-5.1",
+    "coordinator": "moonshot/kimi-k2-6",
+    "weather-analyst": "deepseek/deepseek-v4-pro",
+    "ground-ops": "deepseek/deepseek-v4-flash",
+}
+
 
 def test_every_agent_has_partner_assignment() -> None:
-    """All six agents have a documented partner model recommendation."""
+    """All six agents have a documented AI/ML API model recommendation."""
     assigned = {a.agent_name for a in PARTNER_MODEL_ASSIGNMENTS}
-    assert assigned == {
-        "coordinator",
-        "conflict-detector",
-        "weather-analyst",
-        "safety-reviewer",
-        "ground-ops",
-        "emergency-response",
-    }
+    assert assigned == set(EXPECTED_MODELS)
 
 
 def test_every_assignment_has_substantive_rationale() -> None:
@@ -33,21 +37,25 @@ def test_every_assignment_has_substantive_rationale() -> None:
         assert a.prize_category, f"{a.agent_name} missing prize category"
 
 
-def test_both_partners_are_targeted() -> None:
-    """Assignments cover both AI/ML API and Featherless prizes."""
-    categories = {a.prize_category for a in PARTNER_MODEL_ASSIGNMENTS}
-    assert any("AI/ML API" in c for c in categories)
-    assert any("Featherless" in c for c in categories)
+def test_all_assignments_use_aimlapi() -> None:
+    """Every assignment routes through AI/ML API (single partner)."""
+    providers = {a.provider for a in PARTNER_MODEL_ASSIGNMENTS}
+    assert providers == {"aimlapi"}
+
+
+def test_assignments_match_confirmed_models() -> None:
+    """Each agent is pinned to its confirmed AI/ML API model."""
+    actual = {a.agent_name: a.model for a in PARTNER_MODEL_ASSIGNMENTS}
+    assert actual == EXPECTED_MODELS
 
 
 def test_assignments_by_provider_filters_correctly() -> None:
     """assignments_by_provider returns only matching assignments."""
     aimlapi = assignments_by_provider("aimlapi")
-    featherless = assignments_by_provider("featherless")
     assert all(a.provider == "aimlapi" for a in aimlapi)
-    assert all(a.provider == "featherless" for a in featherless)
-    assert len(aimlapi) >= 1
-    assert len(featherless) >= 1
+    assert len(aimlapi) == len(PARTNER_MODEL_ASSIGNMENTS)
+    # An unknown provider returns an empty list, not an error.
+    assert assignments_by_provider("featherless") == []
 
 
 def test_env_overrides_map_is_well_formed() -> None:
@@ -55,16 +63,19 @@ def test_env_overrides_map_is_well_formed() -> None:
     overrides = env_overrides_for_active_provider("aimlapi")
     assert all(k.endswith("_MODEL") for k in overrides)
     assert all(isinstance(v, str) and v for v in overrides.values())
+    assert overrides["CONFLICT_DETECTOR_MODEL"] == "deepseek/deepseek-v4-pro"
+    assert overrides["SAFETY_REVIEWER_MODEL"] == "zhipu/glm-5.1"
 
 
-def test_structured_output_agents_use_aimlapi() -> None:
-    """Time-critical structured-output agents route to AI/ML API gpt-4o."""
-    aimlapi_agents = {a.agent_name for a in assignments_by_provider("aimlapi")}
-    assert "conflict-detector" in aimlapi_agents
-    assert "safety-reviewer" in aimlapi_agents
-    assert "emergency-response" in aimlapi_agents
-    for a in assignments_by_provider("aimlapi"):
-        assert a.model == "gpt-4o"
+def test_structured_output_agents_use_glm_5_1() -> None:
+    """Highest-stakes structured-output agents route to GLM-5.1."""
+    glm_agents = {
+        a.agent_name
+        for a in PARTNER_MODEL_ASSIGNMENTS
+        if a.model == "zhipu/glm-5.1"
+    }
+    assert "safety-reviewer" in glm_agents
+    assert "emergency-response" in glm_agents
 
 
 def test_partner_routing_endpoint_returns_all_agents() -> None:
@@ -85,7 +96,7 @@ def test_partner_routing_endpoint_returns_all_agents() -> None:
     assert len(body) == 6
     # Each entry has the required fields
     for agent, info in body.items():
-        assert "provider" in info
-        assert "model" in info
+        assert info["provider"] == "aimlapi"
+        assert info["model"] == EXPECTED_MODELS[agent]
         assert "rationale" in info
-        assert "prize_category" in info
+        assert info["prize_category"] == "Best Use of AI/ML API"

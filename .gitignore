@@ -15,3 +15,8 @@ credentials.json
 Thumbs.db
 data/audit.db
 frontend/dist/
+
+# Internal planning docs — not part of the submission
+AGENTS.md
+PLAN.md
+
