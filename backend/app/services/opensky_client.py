@@ -15,8 +15,8 @@ from shared.constants import (
     METERS_PER_SECOND_TO_FPM,
     METERS_PER_SECOND_TO_KNOTS,
     METERS_TO_FEET,
-    OPATIONSKY_POLL_INTERVAL_SECONDS,
-    OPATIONSKY_DAILY_CREDIT_LIMIT,
+    OPENSKY_POLL_INTERVAL_SECONDS,
+    OPENSKY_DAILY_CREDIT_LIMIT,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class OpenSkyClient:
             if not self.is_configured:
                 raise OpenSkyAPIError(
                     "OpenSky credentials not configured. "
-                    "Set OPATIONSKY_USERNAME and OPATIONSKY_PASSWORD."
+                    "Set OPENSKY_USERNAME and OPENSKY_PASSWORD."
                 )
             self._client = httpx.AsyncClient(
                 auth=(self._username, self._password),  # type: ignore[arg-type]
@@ -199,7 +199,7 @@ class OpenSkyClient:
         if not self.is_configured:
             raise OpenSkyAPIError(
                 "OpenSky credentials not configured. "
-                "Set OPATIONSKY_USERNAME and OPATIONSKY_PASSWORD."
+                "Set OPENSKY_USERNAME and OPENSKY_PASSWORD."
             )
 
         client = self._get_client()

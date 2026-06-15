@@ -14,6 +14,8 @@ import math
 
 from pydantic import BaseModel, Field
 
+from ml.trajectory import compute_bearing as _compute_bearing_impl
+from ml.trajectory import haversine_distance_nm
 from shared.constants import (
     CPA_ALERT_THRESHOLD_NM,
     CPA_CRITICAL_THRESHOLD_NM,
@@ -72,6 +74,9 @@ class DispatchDecision(BaseModel):
 def _haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Compute great-circle distance between two points in nautical miles.
 
+    Thin alias for :func:`ml.trajectory.haversine_distance_nm` kept so
+    existing dispatch tests and call sites resolve unchanged.
+
     Args:
         lat1: Latitude of point 1 in decimal degrees.
         lon1: Longitude of point 1 in decimal degrees.
@@ -81,16 +86,7 @@ def _haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     Returns:
         Distance in nautical miles.
     """
-    R_NM = 3440.065  # Earth radius in nautical miles
-    lat1_rad = math.radians(lat1)
-    lat2_rad = math.radians(lat2)
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-
-    a = math.sin(dlat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-    return R_NM * c
+    return haversine_distance_nm(lat1, lon1, lat2, lon2)
 
 
 def _point_in_polygon(lat: float, lon: float, polygon: list[tuple[float, float]]) -> bool:
@@ -295,6 +291,9 @@ class CoordinatorDispatcher:
 def _compute_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Compute initial bearing from point 1 to point 2.
 
+    Thin alias for :func:`ml.trajectory.compute_bearing` kept so existing
+    dispatch tests and call sites resolve unchanged.
+
     Args:
         lat1: Latitude of origin in decimal degrees.
         lon1: Longitude of origin in decimal degrees.
@@ -304,16 +303,7 @@ def _compute_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
     Returns:
         Bearing in degrees (0-360, clockwise from true north).
     """
-    lat1_rad = math.radians(lat1)
-    lat2_rad = math.radians(lat2)
-    dlon_rad = math.radians(lon2 - lon1)
-
-    y = math.sin(dlon_rad) * math.cos(lat2_rad)
-    x = math.cos(lat1_rad) * math.sin(lat2_rad) - math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(dlon_rad)
-
-    bearing_rad = math.atan2(y, x)
-    bearing_deg = math.degrees(bearing_rad)
-    return (bearing_deg + 360) % 360
+    return _compute_bearing_impl(lat1, lon1, lat2, lon2)
 
 
 def _normalize_angle(angle: float) -> float:

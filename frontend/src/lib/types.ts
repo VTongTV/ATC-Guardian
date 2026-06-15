@@ -90,3 +90,28 @@ export interface AuditEvent {
   target_agent: string | null;
   scenario_id: string | null;
 }
+
+/** Decision lifecycle status (human-on-the-loop). */
+export type DecisionStatus = "pending" | "approved" | "rejected" | "modified";
+
+/** A proposed agent action awaiting controller approval. */
+export interface ControllerDecision {
+  decision_id: string;
+  created_at: string;
+  resolved_at: string | null;
+  status: DecisionStatus;
+  scenario_id: string;
+  advisory_kind: string;
+  summary: string;
+  agent_recommendation: string;
+  reviewer_verdict: string;
+  evidence: Record<string, unknown>;
+  controller_action: string | null;
+  controller_note: string | null;
+}
+
+/** Request body for resolving a pending decision. */
+export interface ResolveDecisionRequest {
+  action: "APPROVED" | "REJECTED" | "MODIFIED";
+  controller_note?: string;
+}

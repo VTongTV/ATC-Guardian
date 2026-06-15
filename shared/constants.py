@@ -111,7 +111,7 @@ RVSM_UPPER_BOUND_FT: int = 41000
 SIMULATED_DATA_INTERVAL_SECONDS: float = 4.0
 """Interval between simulated data updates in seconds."""
 
-OPATIONSKY_POLL_INTERVAL_SECONDS: float = 10.0
+OPENSKY_POLL_INTERVAL_SECONDS: float = 10.0
 """Minimum interval between OpenSky API polls in seconds."""
 
 BAND_POLL_INTERVAL_SECONDS: float = 3.0
@@ -121,7 +121,7 @@ BAND_POLL_INTERVAL_SECONDS: float = 3.0
 # API rate limits
 # ---------------------------------------------------------------------------
 
-OPATIONSKY_DAILY_CREDIT_LIMIT: int = 4000
+OPENSKY_DAILY_CREDIT_LIMIT: int = 4000
 """OpenSky free account daily credit limit."""
 
 AWC_RATE_LIMIT_PER_MINUTE: int = 100

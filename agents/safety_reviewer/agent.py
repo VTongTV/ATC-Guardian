@@ -1,8 +1,11 @@
-"""ATC Guardian Conflict Detector Agent — main entry point.
+"""ATC Guardian Safety Reviewer Agent — main entry point.
 
-Runs as a Band agent using PydanticAIAdapter. Receives aircraft
-pair dispatches from the Coordinator, computes CPA, and issues
-structured conflict advisories.
+Runs as a Band agent using PydanticAIAdapter. Receives proposed
+advisories from the Coordinator, cross-examines them against ICAO
+separation minima, and returns an explicit Approve/Reject/Modify
+verdict before any action reaches the controller. This is the
+adversarial review loop that makes ATC Guardian safer than a
+single-pass recommend-then-execute flow.
 """
 
 import asyncio
@@ -20,7 +23,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 from band import Agent
 from band.adapters import PydanticAIAdapter
 
-from prompts import CONFLICT_DETECTOR_SYSTEM_PROMPT
+from prompts import SAFETY_REVIEWER_SYSTEM_PROMPT
 from shared.llm_config import resolve_llm_config
 
 logging.basicConfig(
@@ -30,18 +33,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def create_conflict_detector_adapter() -> PydanticAIAdapter:
-    """Create the PydanticAIAdapter for the Conflict Detector agent.
+def create_safety_reviewer_adapter() -> PydanticAIAdapter:
+    """Create the PydanticAIAdapter for the Safety Reviewer agent.
 
     Uses PydanticAI with the multi-provider LLM configuration resolved
-    from shared environment variables.  The resolved API key and base
+    from shared environment variables. The resolved API key and base
     URL are injected into ``OPENAI_API_KEY`` and ``OPENAI_BASE_URL``
     env vars so PydanticAI's built-in OpenAI client picks them up.
 
     Returns:
         Configured PydanticAIAdapter instance.
     """
-    base_url, api_key, model_name = resolve_llm_config("CONFLICT_DETECTOR_MODEL")
+    base_url, api_key, model_name = resolve_llm_config("SAFETY_REVIEWER_MODEL")
     logger.info(
         "LLM provider=%s model=%s base_url=%s",
         os.getenv("LLM_PROVIDER", "openrouter"),
@@ -55,25 +58,25 @@ def create_conflict_detector_adapter() -> PydanticAIAdapter:
 
     return PydanticAIAdapter(
         model=f"openai:{model_name}",
-        custom_section=CONFLICT_DETECTOR_SYSTEM_PROMPT,
+        custom_section=SAFETY_REVIEWER_SYSTEM_PROMPT,
     )
 
 
 async def main() -> None:
-    """Start the Conflict Detector agent and connect to Band."""
+    """Start the Safety Reviewer agent and connect to Band."""
     from dotenv import load_dotenv
 
     load_dotenv()
 
-    adapter = create_conflict_detector_adapter()
+    adapter = create_safety_reviewer_adapter()
 
     agent = Agent.create(
         adapter=adapter,
-        agent_id=os.environ["CONFLICT_DETECTOR_AGENT_ID"],
-        api_key=os.environ["CONFLICT_DETECTOR_API_KEY"],
+        agent_id=os.environ["SAFETY_REVIEWER_AGENT_ID"],
+        api_key=os.environ["SAFETY_REVIEWER_API_KEY"],
     )
 
-    logger.info("Starting ATC Guardian Conflict Detector agent...")
+    logger.info("Starting ATC Guardian Safety Reviewer agent...")
     await agent.run()
 
 

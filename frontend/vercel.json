@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/data/:path*", "destination": "${BACKEND_URL}/data/:path*" },
+    { "source": "/audit/:path*", "destination": "${BACKEND_URL}/audit/:path*" },
+    { "source": "/weather/:path*", "destination": "${BACKEND_URL}/weather/:path*" },
+    { "source": "/decisions/:path*", "destination": "${BACKEND_URL}/decisions/:path*" },
+    { "source": "/collaboration/:path*", "destination": "${BACKEND_URL}/collaboration/:path*" },
+    { "source": "/whatif/:path*", "destination": "${BACKEND_URL}/whatif/:path*" },
+    { "source": "/ws/:path*", "destination": "${BACKEND_URL}/ws/:path*" }
+  ]
+}

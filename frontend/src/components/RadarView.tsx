@@ -7,7 +7,7 @@ a rotating radar-sweep overlay. Uses CartoDB dark tiles for the
 authentic ATC radar aesthetic.
 */
 
-import { useEffect, useMemo, useCallback, useRef } from "react";
+import { Fragment, useEffect, useMemo, useCallback, useRef } from "react";
 import L from "leaflet";
 import {
   MapContainer,
@@ -295,20 +295,43 @@ function ConflictLines({
           : COLOR_CONFLICT_CAUTION;
         const weight = isCritical ? 2.5 : 1.5;
 
+        // Predicted CPA zone — a marker at the midpoint showing where the
+        // closest approach is forecast, radius scaled by the CPA distance.
+        const midLat = (acA.latitude + acB.latitude) / 2;
+        const midLon = (acA.longitude + acB.longitude) / 2;
+        const cpaRadiusM = Math.max(conflict.cpa.min_distance_nm, 1) * 1852;
+
         return (
-          <Polyline
-            key={conflict.advisory_id}
-            positions={[
-              [acA.latitude, acA.longitude],
-              [acB.latitude, acB.longitude],
-            ]}
-            pathOptions={{
-              color,
-              weight,
-              opacity: 0.8,
-              dashArray: "6, 4",
-            }}
-          />
+          <Fragment key={conflict.advisory_id}>
+            <Polyline
+              positions={[
+                [acA.latitude, acA.longitude],
+                [acB.latitude, acB.longitude],
+              ]}
+              pathOptions={{
+                color,
+                weight,
+                opacity: 0.8,
+                dashArray: "6, 4",
+              }}
+            />
+            <Circle
+              center={[midLat, midLon]}
+              radius={cpaRadiusM}
+              pathOptions={{
+                color,
+                weight: 1,
+                opacity: 0.5,
+                fillOpacity: 0.12,
+                dashArray: "3, 6",
+              }}
+            >
+              <Tooltip sticky>
+                CPA {conflict.cpa.min_distance_nm} nm in{" "}
+                {Math.round(conflict.cpa.time_to_cpa_seconds)}s ({conflict.severity})
+              </Tooltip>
+            </Circle>
+          </Fragment>
         );
       })}
     </>

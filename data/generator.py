@@ -2,15 +2,17 @@
 
 Takes a ScenarioDefinition and produces time-stepped snapshots
 by extrapolating each aircraft along its current state vector.
-Supports mid-scenario events (squawk changes, heading changes)
-injected at specific elapsed times.
+Each snapshot is enriched with deterministic conflict, weather, and
+emergency detections (no LLM) so the radar shows real alerts even
+before agents are consulted.
 """
 
 from datetime import datetime, timedelta, timezone
 
 from ml.trajectory import extrapolate_position
 from shared.constants import SIMULATED_DATA_INTERVAL_SECONDS
-from shared.models import AircraftState, PositionGeographic, RadarSnapshot, ScenarioDefinition
+from shared.detector import detect_conflicts, detect_emergencies, detect_weather_hazards
+from shared.models import AircraftState, PositionGeographic, RadarSnapshot, ScenarioDefinition, SIGMET
 
 
 def evolve_scenario(
@@ -41,16 +43,23 @@ def evolve_scenario(
 def generate_radar_snapshot(
     scenario: ScenarioDefinition,
     elapsed_seconds: float,
+    sigmets: list[SIGMET] | None = None,
 ) -> RadarSnapshot:
     """Produce a complete radar snapshot for a given scenario time.
+
+    The snapshot is enriched with deterministic detections: pairwise
+    conflict advisories from CPA scan, emergencies from squawk codes,
+    and weather advisories from any SIGMET polygons. These are the
+    alerts agents later review and refine via Band.
 
     Args:
         scenario: The scenario definition.
         elapsed_seconds: Seconds since scenario start.
+        sigmets: Optional active SIGMETs for weather detection.
 
     Returns:
-        RadarSnapshot with all aircraft states at the given time.
-        Conflicts, weather, and emergencies are empty — agents fill those.
+        RadarSnapshot with aircraft plus detected conflicts, weather
+        advisories, and emergencies.
     """
     now = datetime.now(timezone.utc)
     aircraft_states = evolve_scenario(scenario, elapsed_seconds)
@@ -62,9 +71,9 @@ def generate_radar_snapshot(
         scenario_id=scenario.scenario_id,
         elapsed_seconds=elapsed_seconds,
         aircraft=aircraft_states,
-        conflicts=[],
-        weather_advisories=[],
-        emergencies=[],
+        conflicts=detect_conflicts(aircraft_states),
+        weather_advisories=detect_weather_hazards(sigmets or [], aircraft_states),
+        emergencies=detect_emergencies(aircraft_states),
     )
 
 

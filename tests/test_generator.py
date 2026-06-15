@@ -3,7 +3,12 @@
 from datetime import datetime, timezone
 
 from data.generator import evolve_scenario, generate_radar_snapshot, generate_scenario_timeline
-from data.scenarios import scenario_a_convergence, scenario_b_weather_deviation, scenario_c_emergency
+from data.scenarios import (
+    SCENARIO_SIGMETS,
+    scenario_a_convergence,
+    scenario_b_weather_deviation,
+    scenario_c_emergency,
+)
 from shared.models import AircraftState, RadarSnapshot
 
 
@@ -50,14 +55,43 @@ class TestGenerateRadarSnapshot:
 
         assert len(snapshot.aircraft) > 0
 
-    def test_conflicts_empty_at_snapshot_level(self) -> None:
-        """Conflicts are agent-populated, so snapshot starts empty."""
+    def test_converging_scenario_detects_conflict(self) -> None:
+        """Scenario A (UAL123 vs DAL456 converging) must surface a conflict."""
         scenario = scenario_a_convergence()
         snapshot = generate_radar_snapshot(scenario, elapsed_seconds=0)
 
-        assert snapshot.conflicts == []
+        assert len(snapshot.conflicts) >= 1
+        pair = snapshot.conflicts[0].cpa
+        callsigns = {pair.aircraft_a_callsign, pair.aircraft_b_callsign}
+        assert {"UAL123", "DAL456"} == callsigns
+        assert pair.is_conflict is True
+
+    def test_emergency_scenario_detects_7700(self) -> None:
+        """Scenario C must surface an emergency for SWA770 (squawk 7700)."""
+        scenario = scenario_c_emergency()
+        snapshot = generate_radar_snapshot(scenario, elapsed_seconds=0)
+
+        assert len(snapshot.emergencies) >= 1
+        emrg = snapshot.emergencies[0]
+        assert emrg.callsign == "SWA770"
+        assert emrg.squawk_code == "7700"
+
+    def test_weather_scenario_detects_sigmet_when_provided(self) -> None:
+        """Scenario B with its SIGMET must surface a weather advisory."""
+        scenario = scenario_b_weather_deviation()
+        sigmets = SCENARIO_SIGMETS["SCN-B"]
+        snapshot = generate_radar_snapshot(scenario, elapsed_seconds=0, sigmets=sigmets)
+
+        assert len(snapshot.weather_advisories) >= 1
+        advisory = snapshot.weather_advisories[0]
+        assert advisory.sigmet.sigmet_id == "SIGM-001"
+
+    def test_no_sigmet_means_no_weather_advisory(self) -> None:
+        """Without SIGMETs the weather advisory list is empty."""
+        scenario = scenario_b_weather_deviation()
+        snapshot = generate_radar_snapshot(scenario, elapsed_seconds=0)
+
         assert snapshot.weather_advisories == []
-        assert snapshot.emergencies == []
 
 
 class TestGenerateScenarioTimeline:
