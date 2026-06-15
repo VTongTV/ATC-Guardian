@@ -13,6 +13,7 @@ Usage:
 
 import logging
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -75,17 +76,26 @@ def start_agent(agent_name: str) -> subprocess.Popen | None:
     return proc
 
 
-def start_frontend() -> subprocess.Popen:
+def start_frontend() -> subprocess.Popen | None:
     """Start the Vite frontend dev server.
 
     Returns:
-        Subprocess handle for the frontend process.
+        Subprocess handle for the frontend process, or None if npm is unavailable.
     """
+    if shutil.which("npm") is None:
+        logger.warning("npm not found on PATH — skipping frontend")
+        return None
+
     frontend_dir = PROJECT_ROOT / "frontend"
+    if not frontend_dir.exists():
+        logger.warning("Frontend directory not found — skipping")
+        return None
+
     logger.info("Starting frontend on port %d...", FRONTEND_PORT)
     proc = subprocess.Popen(
         ["npm", "run", "dev"],
         cwd=frontend_dir,
+        shell=True,  # Required on Windows to resolve npm.cmd
     )
     _processes.append(proc)
     logger.info("Frontend started (PID %d)", proc.pid)

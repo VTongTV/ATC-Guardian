@@ -214,7 +214,11 @@ class AppSettings(BaseSettings):
     safety_reviewer_agent_id: str | None = Field(default=None, description="Band agent ID for Safety Reviewer")
     safety_reviewer_api_key: str | None = Field(default=None, description="Band API key for Safety Reviewer")
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 def get_settings() -> AppSettings:
