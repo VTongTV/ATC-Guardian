@@ -2,7 +2,7 @@
 
 Starts:
 1. FastAPI backend (on port 8000)
-2. 5 agent processes (each in their own venv)
+2. 6 agent processes (using the project venv)
 3. Frontend dev server (Vite on port 5173)
 
 All processes run concurrently. Press Ctrl+C to stop all.
@@ -51,7 +51,7 @@ def start_backend() -> subprocess.Popen:
 
 
 def start_agent(agent_name: str) -> subprocess.Popen | None:
-    """Start a single agent process in its own venv.
+    """Start a single agent process using the project venv.
 
     Args:
         agent_name: Directory name under agents/ (e.g. "coordinator").
@@ -64,17 +64,11 @@ def start_agent(agent_name: str) -> subprocess.Popen | None:
         logger.warning("Agent directory not found: %s — skipping", agent_dir)
         return None
 
-    venv_python = agent_dir / ".venv" / "Scripts" / "python.exe"
-    if not venv_python.exists():
-        logger.warning(
-            "Agent venv not found: %s — run scripts/setup.py first", venv_python
-        )
-        return None
-
     logger.info("Starting agent: %s...", agent_name)
     proc = subprocess.Popen(
-        [str(venv_python), "agent.py"],
+        [sys.executable, "agent.py"],
         cwd=agent_dir,
+        env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT)},
     )
     _processes.append(proc)
     logger.info("Agent %s started (PID %d)", agent_name, proc.pid)

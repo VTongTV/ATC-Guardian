@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 #: Per-scenario narration beats, keyed by elapsed seconds.
 NARRATION: dict[str, dict[int, str]] = {
     "SCN-A": {
-        0: "SCN-A begins: three aircraft near JFK. UAL123 and DAL456 are on converging headings at FL350.",
+        0: "SCN-A begins: three aircraft near Mumbai (VABB). UAL123 and DAL456 are on converging headings at FL350.",
         4: "Conflict Detector flags UAL123/DAL456 — CPA under 5nm. Routing to Safety Reviewer.",
         8: "Safety Reviewer cross-examines against ICAO 5nm lateral minimum. Verdict: APPROVE.",
         12: "Coordinator surfaces the conflict to the controller for a decision.",
@@ -49,7 +49,7 @@ NARRATION: dict[str, dict[int, str]] = {
         0: "SCN-C begins: SWA770 squawks 7700 and begins an emergency descent.",
         4: "Emergency Response declares DISTRESS phase. Emergency veto active — lower-priority advisories deferred.",
         8: "Emergency Response recruits Ground Ops for the nearest suitable runway.",
-        12: "Ground Ops returns KJFK 31L/31R. Safety Reviewer approves the resolution.",
+        12: "Ground Ops returns VABB 27/14. Safety Reviewer approves the resolution.",
         16: "Coordinator surfaces the emergency resolution to the controller.",
     },
 }

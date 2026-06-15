@@ -95,6 +95,8 @@ The Emergency Response agent also holds **veto power**: while an emergency is ac
 
 ## Quick start (offline demo — no API keys needed)
 
+> For the full, step-by-step walkthrough (offline + live Band), see **[SETUP.md](SETUP.md)**.
+
 ```bash
 # 1. Backend (Python 3.12+)
 uv venv && uv sync
@@ -110,6 +112,9 @@ Open the UI, switch scenarios (SCN-A conflict, SCN-B weather, SCN-C emergency), 
 
 ## Going live with Band
 
+> This is the short version. For every step with expected output and a
+> troubleshooting table, see **[SETUP.md → Track B](SETUP.md#track-b--live-band-room-6-real-agents)**.
+
 ```bash
 # 1. Create a Band account (promo code BANDHACK26 for 1 month Pro)
 # 2. Create 6 remote agents at app.band.ai/agents, copy each ID + API key
@@ -119,8 +124,7 @@ cp .env.example .env
 #    Set BAND_MODE=live, BAND_API_KEY, BAND_ROOM_ID, and the 6 *_AGENT_ID/*_API_KEY
 #    Set LLM_PROVIDER=aimlapi and the AI/ML API key(s)
 
-# 5. Create per-agent venvs and start everything:
-uv run python scripts/setup.py      # creates each agent's venv
+# 5. Start everything:
 uv run python scripts/start_all.py  # backend + 6 agents + frontend
 ```
 
@@ -164,7 +168,7 @@ ATC Guardian targets the **Best Use of AI/ML API** ($1,000) prize with principle
 ## Testing
 
 ```bash
-uv run pytest tests/ -q   # 165 tests, all green
+uv run pytest tests/ -q   # 171 tests, all green
 ```
 
 Tests cover the CPA math, conflict/emergency/weather detection, the full Band collaboration loop (offline), the safety-reviewer verdict logic, human-on-the-loop decisions, the what-if counterfactual, audit export, partner routing, and all routers.
@@ -186,7 +190,7 @@ data/                # Scenario definitions + simulation engine
 ml/                  # CPA, trajectory, what-if (pure math)
 shared/              # Models, constants, BandClient, agent roster
 frontend/src/        # React + Leaflet radar UI
-tests/               # 165 tests
+tests/               # 171 tests
 ```
 
 ---
