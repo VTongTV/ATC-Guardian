@@ -195,9 +195,12 @@ OPENROUTER_RATE_LIMIT_RPD: int = 200
 AIMLAPI_BASE_URL: str = "https://api.aimlapi.com/v1"
 """AI/ML API base URL (OpenAI-compatible)."""
 
-AIMLAPI_DEFAULT_MODEL: str = "openai/gpt-5-1-chat-latest"
-"""Default AI/ML API model. GPT-5.1 is the flagship with configurable
-reasoning and dependable structured outputs (verified 2026-06)."""
+AIMLAPI_DEFAULT_MODEL: str = "deepseek/deepseek-v4-pro"
+"""Default AI/ML API model. DeepSeek V4 Pro pairs strong analytical
+reasoning with reliable structured JSON output — the safest single
+fallback when an agent has no per-agent model override. Other models in
+the pool (GPT-5.1, Gemini 3.5 Flash, GLM-5.1, Kimi K2-6) are applied via
+the per-agent overrides in partner_routing.py."""
 
 AIMLAPI_REASONING_MODEL: str = "openai/gpt-5-1"
 """AI/ML API reasoning variant for analysis-heavy agents."""

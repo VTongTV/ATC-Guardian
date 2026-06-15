@@ -54,8 +54,8 @@ class LLMProviderSettings(BaseSettings):
         description="AI/ML API base URL",
     )
     aimlapi_default_model: str = Field(
-        default="openai/gpt-5-1-chat-latest",
-        description="Default AI/ML API model (GPT-5.1 flagship, configurable reasoning).",
+        default="deepseek/deepseek-v4-pro",
+        description="Default AI/ML API model (DeepSeek V4 Pro — strong reasoning + reliable structured output). The per-agent *_MODEL overrides in partner_routing.py swap in GPT-5.1, GLM-5.1, Kimi K2-6, etc. where they fit best.",
     )
 
     # ---- Active provider selection ----
