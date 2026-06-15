@@ -13,12 +13,17 @@ from pydantic_settings import BaseSettings
 class LLMProviderSettings(BaseSettings):
     """LLM provider configuration shared across agents.
 
-    Supports three OpenAI-compatible providers:
+    Supports two OpenAI-compatible providers:
+    - AI/ML API (hackathon partner, primary for demo) — GPT-5.1 flagship,
+      Gemini 3.5 Flash, and more; powers the 'Best Use of AI/ML API' prize.
     - OpenRouter (free models for development / testing)
-    - AI/ML API (hackathon partner, primary for demo)
-    - Featherless (hackathon partner, secondary / backup)
 
     Each agent can override the global model via its own env var.
+
+    Budget: we have 4 AI/ML API keys ($10 each, $40 total). Set
+    ``AIMLAPI_KEY_1`` .. ``AIMLAPI_KEY_4`` to spread load across them;
+    agents rotate through the pool. ``AIMLAPI_KEY`` works as a single-key
+    fallback.
     """
 
     # ---- OpenRouter (free models) ----
@@ -35,35 +40,38 @@ class LLMProviderSettings(BaseSettings):
         description="Default free OpenRouter model for agents",
     )
 
-    # ---- AI/ML API (hackathon partner) ----
+    # ---- AI/ML API (hackathon partner — primary for demo) ----
     aimlapi_key: str | None = Field(
         default=None,
-        description="AI/ML API key for LLM calls (hackathon partner credits)",
+        description="AI/ML API key (single). Use AIMLAPI_KEY_1..4 for a pool.",
     )
+    aimlapi_key_1: str | None = Field(default=None, description="AI/ML API pooled key 1")
+    aimlapi_key_2: str | None = Field(default=None, description="AI/ML API pooled key 2")
+    aimlapi_key_3: str | None = Field(default=None, description="AI/ML API pooled key 3")
+    aimlapi_key_4: str | None = Field(default=None, description="AI/ML API pooled key 4")
     aimlapi_base_url: str = Field(
         default="https://api.aimlapi.com/v1",
         description="AI/ML API base URL",
     )
     aimlapi_default_model: str = Field(
-        default="gpt-4o",
-        description="Default AI/ML API model (requires credits)",
-    )
-
-    # ---- Featherless (hackathon partner) ----
-    featherless_key: str | None = Field(
-        default=None,
-        description="Featherless API key for LLM calls",
-    )
-    featherless_base_url: str = Field(
-        default="https://api.featherless.ai/v1",
-        description="Featherless API base URL",
+        default="openai/gpt-5-1-chat-latest",
+        description="Default AI/ML API model (GPT-5.1 flagship, configurable reasoning).",
     )
 
     # ---- Active provider selection ----
     llm_provider: str = Field(
         default="openrouter",
-        description="Active LLM provider: openrouter | aimlapi | featherless",
+        description="Active LLM provider: openrouter | aimlapi",
     )
+
+    @property
+    def aimlapi_pooled_keys(self) -> list[str]:
+        """Return the non-empty pooled AI/ML API keys (1..4).
+
+        Returns:
+            List of configured pooled keys (may be empty).
+        """
+        return [k for k in (self.aimlapi_key_1, self.aimlapi_key_2, self.aimlapi_key_3, self.aimlapi_key_4) if k]
 
     def resolve_base_url(self) -> str:
         """Resolve the base URL for the active LLM provider.
@@ -79,16 +87,18 @@ class LLMProviderSettings(BaseSettings):
                 return self.openrouter_base_url
             case "aimlapi":
                 return self.aimlapi_base_url
-            case "featherless":
-                return self.featherless_base_url
             case _:
-                valid = "openrouter | aimlapi | featherless"
+                valid = "openrouter | aimlapi"
                 raise ValueError(
                     f"Unknown LLM_PROVIDER '{self.llm_provider}'. Must be one of: {valid}"
                 )
 
     def resolve_api_key(self) -> str:
         """Resolve the API key for the active LLM provider.
+
+        For AI/ML API, prefers the pooled keys (AIMLAPI_KEY_1..4) so demo
+        load spreads across all four $10 keys; falls back to the single
+        AIMLAPI_KEY.
 
         Returns:
             API key string for the selected provider.
@@ -102,13 +112,14 @@ class LLMProviderSettings(BaseSettings):
                     raise ValueError("OPENROUTER_API_KEY is required when LLM_PROVIDER=openrouter")
                 return self.openrouter_api_key
             case "aimlapi":
+                pooled = self.aimlapi_pooled_keys
+                if pooled:
+                    return pooled[0]
                 if not self.aimlapi_key:
-                    raise ValueError("AIMLAPI_KEY is required when LLM_PROVIDER=aimlapi")
+                    raise ValueError(
+                        "AIMLAPI_KEY (or AIMLAPI_KEY_1..4 pool) is required when LLM_PROVIDER=aimlapi"
+                    )
                 return self.aimlapi_key
-            case "featherless":
-                if not self.featherless_key:
-                    raise ValueError("FEATHERLESS_KEY is required when LLM_PROVIDER=featherless")
-                return self.featherless_key
             case _:
                 raise ValueError(f"Unknown LLM_PROVIDER '{self.llm_provider}'")
 
@@ -129,8 +140,6 @@ class LLMProviderSettings(BaseSettings):
                 return self.openrouter_default_model
             case "aimlapi":
                 return self.aimlapi_default_model
-            case "featherless":
-                return "featherless/default"
             case _:
                 return self.openrouter_default_model
 
