@@ -117,7 +117,7 @@ Open the UI, switch scenarios (SCN-A conflict, SCN-B weather, SCN-C emergency), 
 # 4. Fill in .env (from .env.example):
 cp .env.example .env
 #    Set BAND_MODE=live, BAND_API_KEY, BAND_ROOM_ID, and the 6 *_AGENT_ID/*_API_KEY
-#    Set LLM_PROVIDER + the provider key (openrouter | aimlapi | featherless)
+#    Set LLM_PROVIDER=aimlapi and the AI/ML API key(s)
 
 # 5. Create per-agent venvs and start everything:
 uv run python scripts/setup.py      # creates each agent's venv
@@ -128,23 +128,18 @@ uv run python scripts/start_all.py  # backend + 6 agents + frontend
 
 ## Partner technology
 
-ATC Guardian targets both partner prizes with principled, documented per-agent model choices (see `GET /collaboration/partner-routing`):
+ATC Guardian targets the **Best Use of AI/ML API** ($1,000) prize with principled, per-agent model choices: **one AI/ML API key gives access to frontier models from multiple labs, and each agent uses the model best matched to its task** rather than forcing a single model everywhere (see `GET /collaboration/partner-routing`).
 
-### AI/ML API — `gpt-4o`
-Used for the **time-critical, structured-output** agents where dependable function-calling matters most:
-- **Conflict Detector** — well-formed CPA advisories every tick
-- **Safety Reviewer** — APPROVE/REJECT/MODIFY verdicts that always parse
-- **Emergency Response** — deterministic 7700 phase classification at temperature 0
+| Agent | Model | Why |
+|---|---|---|
+| Conflict Detector | `deepseek/deepseek-v4-pro` | Deep reasoning + reliable JSON for CPA advisories |
+| Weather Analyst | `deepseek/deepseek-v4-pro` | Best analytical model for SIGMET interpretation |
+| Safety Reviewer | `zhipu/glm-5.1` | Deterministic APPROVE/REJECT/MODIFY at temp 0 |
+| Emergency Response | `zhipu/glm-5.1` | Deterministic 7700 phase classification |
+| Coordinator | `moonshot/kimi-k2-6` | Long-context instruction-following for @mention dispatch |
+| Ground Ops | `deepseek/deepseek-v4-flash` | Fast, cheap tool-calls for runway/ATIS/NOTAM lookups |
 
-*gpt-4o verified available on AI/ML API with structured outputs + 128K context ([docs.aimlapi.com](https://docs.aimlapi.com/api-references/text-models-llm/openai/gpt-4o)).*
-
-### Featherless AI — open-source models
-Used for **reasoning-heavy, less latency-sensitive** agents, showcasing serverless open-source inference:
-- **Weather Analyst** — `Qwen/Qwen3.5-72B-Instruct`
-- **Coordinator** — `Qwen/Qwen3.5-72B-Instruct`
-- **Ground Ops** — `meta-llama/Llama-4-Scout-17B-16E-Instruct`
-
-*Models verified in the Featherless models directory (2026).*
+*Per-agent models confirmed on AI/ML API (verified 2026-06).*
 
 ---
 
