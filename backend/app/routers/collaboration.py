@@ -91,10 +91,11 @@ async def collaboration_graph(limit: int = 200) -> dict:
 
 @router.get("/partner-routing")
 async def partner_routing() -> dict:
-    """Return the documented per-agent partner model assignments.
+    """Return the documented per-agent AI/ML API model assignments.
 
-    Exposes the rationale for each agent's recommended AI/ML API or
-    Featherless model so prize judges can review the technology choices.
+    Exposes the rationale for each agent's recommended AI/ML API model
+    (one partner, right model per job) so prize judges can review the
+    technology choices.
 
     Returns:
         Dict mapping each agent to its recommended provider, model,
