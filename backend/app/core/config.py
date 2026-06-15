@@ -36,8 +36,8 @@ class LLMProviderSettings(BaseSettings):
         description="OpenRouter API base URL",
     )
     openrouter_default_model: str = Field(
-        default="meta-llama/llama-3.3-70b-instruct:free",
-        description="Default free OpenRouter model for agents",
+        default="nex-agi/nex-n2-pro:free",
+        description="Default free OpenRouter model for agents (Nex-N2-Pro — 397B/17B-active agentic MoE, $0/M tokens).",
     )
 
     # ---- AI/ML API (hackathon partner — primary for demo) ----
