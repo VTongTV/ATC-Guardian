@@ -110,10 +110,21 @@ async def lifespan(app: FastAPI):
     # Band client — drives the agent collaboration loop. Defaults to an
     # in-process simulation so the full loop runs with zero credentials;
     # flip BAND_MODE=live once the Band room and agents are provisioned.
+    # The mention map resolves each agent handle to its Band UUID; the
+    # /messages endpoint requires mentions[].id to be a UUID, not a handle.
+    mention_map = {
+        "coordinator": settings.coordinator_agent_id,
+        "conflict-detector": settings.conflict_detector_agent_id,
+        "weather-analyst": settings.weather_analyst_agent_id,
+        "ground-ops": settings.ground_ops_agent_id,
+        "emergency-response": settings.emergency_response_agent_id,
+        "safety-reviewer": settings.safety_reviewer_agent_id,
+    }
     band_client = create_band_client(
         mode=settings.band_mode,
         api_key=settings.band_api_key,
         chat_id=settings.band_room_id,
+        mention_map=mention_map,
     )
     if isinstance(band_client, SimulatedBandClient):
         from backend.app.services.sim_agents import (

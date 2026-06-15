@@ -214,7 +214,14 @@ class BandPoller:
 
         for attempt in range(BAND_RETRY_ATTEMPTS):
             try:
-                response = await client.get(url, params=params)
+                # Send the API key per-request so auth is guaranteed
+                # regardless of how ``_client`` was constructed (lazily
+                # created with default headers, or injected by a test).
+                response = await client.get(
+                    url,
+                    params=params,
+                    headers={"X-API-Key": self._api_key},
+                )
 
                 if response.status_code == 401:
                     raise BandAPIError(

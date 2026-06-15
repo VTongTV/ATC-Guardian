@@ -482,6 +482,7 @@ class LiveBandClient:
         api_key: str,
         chat_id: str,
         base_url: str = LIVE_BAND_BASE_URL,
+        mention_map: dict[str, str] | None = None,
     ) -> None:
         """Initialise the live client.
 
@@ -489,10 +490,18 @@ class LiveBandClient:
             api_key: Band API key for the ``system-ingest`` identity.
             chat_id: Band room/chat id where agents collaborate.
             base_url: Band API base URL.
+            mention_map: Optional mapping of agent handle (e.g.
+                ``"conflict-detector"``) to Band agent UUID. The
+                ``/messages`` endpoint requires ``mentions[].id`` to be the
+                agent's UUID, so each outbound mention handle is resolved
+                through this map before posting. Handles absent from the
+                map are passed through verbatim (Band will reject them
+                with a 422, surfacing a missing mapping loudly).
         """
         self._api_key = api_key
         self._chat_id = chat_id
         self._base_url = base_url.rstrip("/")
+        self._mention_map = dict(mention_map) if mention_map else {}
         self._client: httpx.AsyncClient | None = None
 
     @property
@@ -545,8 +554,17 @@ class LiveBandClient:
         payload: dict = {
             "message": {
                 "content": content,
+                # Band's ChatMessageRequest requires each mention's `id`
+                # to be the agent's UUID (not its handle string). Resolve
+                # every handle through the mention map; unknown handles
+                # are passed through so Band rejects them visibly rather
+                # than silently mis-routing the @mention.
                 "mentions": [
-                    {"id": name, "handle": name, "name": name}
+                    {
+                        "id": self._mention_map.get(name, name),
+                        "handle": name,
+                        "name": name,
+                    }
                     for name in message.mentions
                 ],
             }
@@ -687,6 +705,7 @@ def create_band_client(
     mode: str,
     api_key: str | None = None,
     chat_id: str | None = None,
+    mention_map: dict[str, str] | None = None,
 ) -> BandClient:
     """Build the appropriate BandClient for the requested mode.
 
@@ -694,6 +713,8 @@ def create_band_client(
         mode: ``sim`` for offline simulation, ``live`` for real Band.
         api_key: Band API key (required for ``live``).
         chat_id: Band room id (required for ``live``).
+        mention_map: Optional handle→UUID map (required for ``live`` to
+            post valid ``mentions[].id`` values). Ignored in ``sim`` mode.
 
     Returns:
         A :class:`BandClient` implementation.
@@ -712,8 +733,16 @@ def create_band_client(
             raise ValueError(
                 "BAND_MODE=live requires BAND_API_KEY and BAND_ROOM_ID"
             )
-        client = LiveBandClient(api_key=api_key, chat_id=chat_id)
-        logger.info("BandClient created in live mode (chat=%s)", chat_id)
+        client = LiveBandClient(
+            api_key=api_key,
+            chat_id=chat_id,
+            mention_map=mention_map,
+        )
+        logger.info(
+            "BandClient created in live mode (chat=%s, %d agents mapped)",
+            chat_id,
+            len(mention_map or {}),
+        )
         return client
 
     raise ValueError(
