@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Band REST API constants
 # ---------------------------------------------------------------------------
 
-BAND_BASE_URL = "https://api.band.ai"
+BAND_BASE_URL = "https://app.band.ai"
 BAND_MESSAGES_ENDPOINT = "/agent/chats/{chat_id}/messages"
 BAND_REQUEST_TIMEOUT_SECONDS = 10
 BAND_RETRY_ATTEMPTS = 2

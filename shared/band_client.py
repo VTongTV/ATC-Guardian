@@ -398,7 +398,7 @@ class SimulatedBandClient:
 # Live transport
 # ---------------------------------------------------------------------------
 
-LIVE_BAND_BASE_URL: str = "https://api.band.ai"
+LIVE_BAND_BASE_URL: str = "https://app.band.ai"
 LIVE_BAND_MESSAGES_PATH: str = "/api/v1/agent/chats/{chat_id}/messages"
 LIVE_BAND_EVENTS_PATH: str = "/api/v1/agent/chats/{chat_id}/events"
 LIVE_BAND_TIMEOUT_SECONDS: int = 10
