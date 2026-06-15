@@ -528,25 +528,29 @@ class LiveBandClient:
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
 
-        # Band's ChatMessageRequest requires content + a list of mention
-        # objects (each with at least an `id`). Mentions must reference the
-        # recipient agents so Band routes the message to them; the sender
-        # identity is implied by the API key, so there is no `role` field.
+        # Band's ChatMessageRequest accepts only `content` and `mentions` —
+        # there is no metadata field on the /messages endpoint.  Any
+        # structured metadata (correlation_id, advisory payload, etc.) is
+        # appended as a JSON trailer inside the content so that the
+        # ingester can extract it back on the reply path.
+        content = message.content
         metadata: dict = dict(message.metadata) if message.metadata else {}
         if message.correlation_id is not None:
             metadata["correlation_id"] = message.correlation_id
+        if metadata:
+            import json as _json
+
+            content = f"{content}\n```json\n{_json.dumps(metadata)}\n```"
 
         payload: dict = {
             "message": {
-                "content": message.content,
+                "content": content,
                 "mentions": [
                     {"id": name, "handle": name, "name": name}
                     for name in message.mentions
                 ],
             }
         }
-        if metadata:
-            payload["message"]["metadata"] = metadata
 
         response = await client.post(url, json=payload)
         if response.status_code >= 400:
