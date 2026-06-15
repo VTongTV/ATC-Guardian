@@ -129,6 +129,55 @@ class BandInboundMessage(BaseModel):
 AgentHandler = Callable[[BandOutboundMessage], Awaitable[list[BandInboundMessage]]]
 
 
+def _extract_mention_handles(metadata: object, mentions_field: object) -> list[str]:
+    """Pull @mention handles out of a Band ChatMessage payload.
+
+    Band stores mentions inside ``metadata`` rather than as a top-level
+    field, and they may be plain handles (``"weather-analyst"``), dicts
+    (``{"id": "...", "handle": "...", "name": "..."}``), or ``@[[uuid]]``
+    tokens embedded in content. This helper normalises all of those into
+    a flat list of handle strings.
+
+    Args:
+        metadata: The message ``metadata`` value (often a dict).
+        mentions_field: A legacy top-level ``mentions`` array, if present.
+
+    Returns:
+        A list of mention handles (without the leading ``@``).
+    """
+    handles: list[str] = []
+    seen: set[str] = set()
+
+    def _add(candidate: object) -> None:
+        if isinstance(candidate, str):
+            value = candidate.strip().lstrip("@")
+        elif isinstance(candidate, dict):
+            value = str(
+                candidate.get("handle") or candidate.get("name") or candidate.get("id") or ""
+            ).strip()
+        else:
+            return
+        # Band sometimes embeds mentions as @[[uuid]] in content; strip
+        # those wrappers down to whatever sits between the brackets.
+        if value.startswith("[[") and value.endswith("]]"):
+            value = value[2:-2]
+        if value and value not in seen:
+            seen.add(value)
+            handles.append(value)
+
+    candidates: list[object] = []
+    if isinstance(mentions_field, list):
+        candidates.extend(mentions_field)
+    if isinstance(metadata, dict):
+        raw_mentions = metadata.get("mentions")
+        if isinstance(raw_mentions, list):
+            candidates.extend(raw_mentions)
+
+    for candidate in candidates:
+        _add(candidate)
+    return handles
+
+
 # ---------------------------------------------------------------------------
 # Client protocol
 # ---------------------------------------------------------------------------
@@ -403,6 +452,17 @@ LIVE_BAND_MESSAGES_PATH: str = "/api/v1/agent/chats/{chat_id}/messages"
 LIVE_BAND_EVENTS_PATH: str = "/api/v1/agent/chats/{chat_id}/events"
 LIVE_BAND_TIMEOUT_SECONDS: int = 10
 
+#: Supported structured event types for the /events endpoint, per the
+#: Band API's ChatEventMessageType. The text message type goes through
+#: the /messages endpoint instead.
+LIVE_BAND_EVENT_TYPES: tuple[str, ...] = (
+    "thought",
+    "task",
+    "tool_call",
+    "tool_result",
+    "error",
+)
+
 
 class BandLiveError(Exception):
     """Raised when a live Band REST call fails."""
@@ -467,23 +527,37 @@ class LiveBandClient:
         """
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
-        body: dict = {
-            "role": message.sender,
-            "content": message.content,
-            "mentions": list(message.mentions),
-        }
-        if message.metadata is not None:
-            body["metadata"] = message.metadata
-        if message.correlation_id is not None:
-            body["metadata"] = {**(body.get("metadata") or {}), "correlation_id": message.correlation_id}
 
-        response = await client.post(url, json=body)
+        # Band's ChatMessageRequest requires content + a list of mention
+        # objects (each with at least an `id`). Mentions must reference the
+        # recipient agents so Band routes the message to them; the sender
+        # identity is implied by the API key, so there is no `role` field.
+        metadata: dict = dict(message.metadata) if message.metadata else {}
+        if message.correlation_id is not None:
+            metadata["correlation_id"] = message.correlation_id
+
+        payload: dict = {
+            "message": {
+                "content": message.content,
+                "mentions": [
+                    {"id": name, "handle": name, "name": name}
+                    for name in message.mentions
+                ],
+            }
+        }
+        if metadata:
+            payload["message"]["metadata"] = metadata
+
+        response = await client.post(url, json=payload)
         if response.status_code >= 400:
             raise BandLiveError(
                 f"Band POST messages failed ({response.status_code}): {response.text[:200]}"
             )
         data = response.json()
-        return str(data.get("id", uuid.uuid4().hex))
+        # Successful responses are wrapped as {"data": {"id": ...}}.
+        sent = data.get("data") if isinstance(data, dict) else None
+        sent_id = sent.get("id") if isinstance(sent, dict) else None
+        return str(sent_id or data.get("id") or uuid.uuid4().hex)
 
     async def post_event(
         self, agent: str, event_type: str, content: str, metadata: dict | None = None
@@ -504,42 +578,51 @@ class LiveBandClient:
         """
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_EVENTS_PATH.format(chat_id=self._chat_id)}"
-        body: dict = {
-            "role": agent,
-            "type": event_type,
+        # Band's ChatEventRequest: {message_type, content, metadata?}.
+        event: dict = {
+            "message_type": event_type,
             "content": content,
         }
         if metadata is not None:
-            body["metadata"] = metadata
+            event["metadata"] = metadata
 
-        response = await client.post(url, json=body)
+        response = await client.post(url, json={"event": event})
         if response.status_code >= 400:
             raise BandLiveError(
                 f"Band POST events failed ({response.status_code}): {response.text[:200]}"
             )
         data = response.json()
-        return str(data.get("id", uuid.uuid4().hex))
+        created = data.get("data") if isinstance(data, dict) else None
+        created_id = created.get("id") if isinstance(created, dict) else None
+        return str(created_id or data.get("id") or uuid.uuid4().hex)
 
     async def fetch_replies(
         self, since_id: str | None = None, limit: int = BAND_MESSAGE_PAGE_SIZE
     ) -> list[BandInboundMessage]:
         """GET recent messages from the Band room.
 
+        Polls ``GET /api/v1/agent/chats/{chat_id}/messages?status=all``.
+        Band does not support cursoring by id, so ``since_id`` is applied
+        client-side: any returned message whose id was already seen is
+        filtered out (oldest-first ordering is preserved).
+
         Args:
-            since_id: Watermark message id (forwarded to Band if supported).
-            limit: Page size.
+            since_id: Watermark message id (last seen by the caller).
+            limit: Page size (forwarded as ``page_size``).
 
         Returns:
-            List of inbound messages (oldest-first).
+            List of inbound messages newer than ``since_id`` (oldest-first).
 
         Raises:
             BandLiveError: If the Band API returns a non-2xx status.
         """
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
-        params: dict[str, object] = {"status": "all", "limit": limit}
-        if since_id is not None:
-            params["after"] = since_id
+        # Band's list endpoint uses page_size (max 100) and a status filter.
+        params: dict[str, object] = {
+            "status": "all",
+            "page_size": min(limit, 100),
+        }
 
         response = await client.get(url, params=params)
         if response.status_code >= 400:
@@ -547,19 +630,33 @@ class LiveBandClient:
                 f"Band GET messages failed ({response.status_code}): {response.text[:200]}"
             )
         data = response.json()
-        raw_messages: Iterable[dict] = data.get("messages") or data.get("data") or []
+        raw_messages: Iterable[dict] = data.get("data") or data.get("messages") or []
 
         inbound: list[BandInboundMessage] = []
         for raw in raw_messages:
+            if not isinstance(raw, dict):
+                continue
+            message_id = str(raw.get("id", ""))
+            if since_id is not None and message_id and message_id == since_id:
+                continue
+
             metadata = raw.get("metadata")
+            # ChatMessage exposes sender_name (preferred) then sender_id;
+            # older/legacy shapes may carry a bare `role` instead.
+            sender = (
+                raw.get("sender_name")
+                or raw.get("sender_id")
+                or raw.get("role")
+                or "unknown"
+            )
             inbound.append(
                 BandInboundMessage(
-                    message_id=str(raw.get("id", "")),
-                    timestamp=str(raw.get("created_at", "")),
-                    sender=str(raw.get("role", "unknown")),
+                    message_id=message_id,
+                    timestamp=str(raw.get("inserted_at") or raw.get("created_at") or ""),
+                    sender=str(sender),
                     content=str(raw.get("content", "")),
-                    mentions=list(raw.get("mentions") or []),
-                    message_type=str(raw.get("type", "text")),
+                    mentions=_extract_mention_handles(metadata, raw.get("mentions")),
+                    message_type=str(raw.get("message_type") or raw.get("type") or "text"),
                     metadata=metadata if isinstance(metadata, dict) else None,
                     correlation_id=(
                         metadata.get("correlation_id")
