@@ -8,6 +8,7 @@ Run from project root: uv run python -m backend.app.main
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -46,9 +47,8 @@ def _warn_if_live_agents_not_running(settings, mention_map: dict[str, str]) -> N
     AGENT COMMS panel stays at (0) — which is the most common live-mode
     misconfiguration.
 
-    This function cannot detect the agents over the network (that would
-    require room-membership introspection Band does not expose here), so
-    it instead logs a high-visibility banner with the exact remedy.
+    When ``start.py`` launches agents before the backend, it sets the
+    ``LABLAB_AGENTS_LAUNCHED`` env var so this banner is suppressed.
 
     Args:
         settings: Loaded application settings (read for band_mode + keys).
@@ -58,6 +58,15 @@ def _warn_if_live_agents_not_running(settings, mention_map: dict[str, str]) -> N
         return
 
     mapped = sum(1 for v in mention_map.values() if v)
+
+    # If start.py launched agents for us, skip the big warning.
+    if os.environ.get("LABLAB_AGENTS_LAUNCHED"):
+        logger.info(
+            "BAND_MODE=live — agents launched by start.py (%d/%d mapped).",
+            mapped, len(mention_map),
+        )
+        return
+
     logger.warning("=" * 72)
     logger.warning("BAND_MODE=live — the backend will POST @mentions to Band,")
     logger.warning("but the specialist agents are SEPARATE processes that must")
@@ -65,7 +74,7 @@ def _warn_if_live_agents_not_running(settings, mention_map: dict[str, str]) -> N
     logger.warning("receive @conflict-detector / @weather-analyst / @emergency-")
     logger.warning("response dispatches that NOTHING answers, so AGENT COMMS")
     logger.warning("will stay at (0) until the agent processes are running.")
-    logger.warning("  -> Launch them:  uv run python scripts/start_all.py")
+    logger.warning("  -> Launch them:  python scripts/start.py")
     logger.warning("     (or open a window per agent under agents/<name>/)")
     logger.warning("  -> Mapped agents: %d/%d handles have a UUID.", mapped, len(mention_map))
     logger.warning("  -> Backend posts as BAND_API_KEY; if that key is the")

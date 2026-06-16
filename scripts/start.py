@@ -123,9 +123,18 @@ def _resolve_mode(args: argparse.Namespace) -> tuple[str, bool]:
 # ---------------------------------------------------------------------------
 
 
-def start_backend() -> subprocess.Popen:
-    """Start the FastAPI backend server."""
+def start_backend(agents_launched: bool = False) -> subprocess.Popen:
+    """Start the FastAPI backend server.
+
+    Args:
+        agents_launched: If True, set LABLAB_AGENTS_LAUNCHED=1 in the
+            backend's environment so the stale "launch agents" warning
+            banner is suppressed.
+    """
     logger.info("Starting backend on port %d...", BACKEND_PORT)
+    env = {**os.environ}
+    if agents_launched:
+        env["LABLAB_AGENTS_LAUNCHED"] = "1"
     proc = subprocess.Popen(
         [
             sys.executable, "-m", "uvicorn",
@@ -135,6 +144,7 @@ def start_backend() -> subprocess.Popen:
             "--reload",
         ],
         cwd=PROJECT_ROOT,
+        env=env,
     )
     _processes.append(proc)
     logger.info("Backend started (PID %d)", proc.pid)
@@ -306,16 +316,16 @@ def main() -> None:
     signal.signal(signal.SIGTERM, lambda *_: (cleanup(), sys.exit(0)))
 
     # --- 1) Backend (always) ------------------------------------------------
-    start_backend()
-    time.sleep(2)
-
-    # --- 2) Agents (live mode only) -----------------------------------------
+    # Agents are launched first so backend starts with agents already running.
     agent_count = 0
     if launch_agents:
         agent_count = start_agents(log_dir=log_dir)
         logger.info("Launched %d/%d agents", agent_count, len(AGENT_NAMES))
 
-    # --- 3) Frontend (always) -----------------------------------------------
+    start_backend(agents_launched=agent_count > 0)
+    time.sleep(2)
+
+    # --- 2) Frontend (always) -----------------------------------------------
     start_frontend()
 
     # --- Summary ------------------------------------------------------------
