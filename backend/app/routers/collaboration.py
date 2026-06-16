@@ -74,6 +74,13 @@ async def collaboration_graph(limit: int = 200) -> dict:
             continue
         mentions = metadata.get("mentions") or []
         for target in mentions:
+            # Mentions may be a list of strings OR a list of dicts
+            # (e.g. {"handle": "conflict-detector", "id": "..."}).
+            # Normalise to a string for use as a Counter key.
+            if isinstance(target, dict):
+                target = target.get("handle") or target.get("name") or str(target)
+            if not isinstance(target, str):
+                continue
             edge_counter[(evt.agent_name, target)] += 1
 
     edges = [

@@ -450,15 +450,8 @@ class SimulatedBandClient:
 LIVE_BAND_BASE_URL: str = "https://app.band.ai"
 LIVE_BAND_MESSAGES_PATH: str = "/api/v1/agent/chats/{chat_id}/messages"
 LIVE_BAND_EVENTS_PATH: str = "/api/v1/agent/chats/{chat_id}/events"
+LIVE_BAND_CHATS_PATH: str = "/api/v1/agent/chats"
 LIVE_BAND_TIMEOUT_SECONDS: int = 10
-
-#: How many messages to prune when the room hits its limit.  We delete
-#: more than one to avoid pruning on every single post during a burst.
-LIVE_BAND_PRUNE_BATCH: int = 50
-
-#: Headroom target — after pruning we want the room well below the
-#: limit so there is room for a full advisory chain before the next prune.
-LIVE_BAND_PRUNE_HEADROOM: int = 200
 
 #: Supported structured event types for the /events endpoint, per the
 #: Band API's ChatEventMessageType. The text message type goes through
@@ -612,13 +605,14 @@ class LiveBandClient:
 
         response = await client.post(url, json=payload)
         if response.status_code >= 400:
-            # Auto-prune and retry on limit_reached.
+            # Auto-rotate room on limit_reached.
             if self._is_limit_reached(response):
                 logger.warning(
-                    "Band room hit message limit — auto-pruning %d oldest messages",
-                    LIVE_BAND_PRUNE_BATCH,
+                    "Band room hit message limit — auto-rotating to a new room"
                 )
-                await self.prune_room(keep_count=LIVE_BAND_PRUNE_HEADROOM)
+                await self._rotate_room()
+                # Retry with the new room id.
+                url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
                 response = await client.post(url, json=payload)
             if response.status_code >= 400:
                 raise BandLiveError(
@@ -641,105 +635,46 @@ class LiveBandClient:
         except Exception:
             return False
 
-    async def delete_message(self, message_id: str) -> bool:
-        """DELETE a single message from the Band room.
+    async def _rotate_room(self) -> None:
+        """Create a new Band chat room and switch the client to it.
 
-        Args:
-            message_id: The Band-assigned message id to delete.
+        Called automatically when the current room hits the message limit
+        (``limit_reached`` 403). The old room remains for reference; all
+        future posts go to the new room. The agents will discover the new
+        room on their next WebSocket reconnect cycle.
 
-        Returns:
-            True if the delete succeeded (2xx), False otherwise.
+        Raises:
+            BandLiveError: If the room creation call fails.
         """
         client = self._get_client()
-        url = (
-            f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
-            f"/{message_id}"
-        )
+        url = f"{self._base_url}{LIVE_BAND_CHATS_PATH}"
+        old_chat_id = self._chat_id
         try:
-            response = await client.delete(url)
-            if response.status_code < 300:
-                return True
-            logger.warning(
-                "Band DELETE message %s failed (%d): %s",
-                message_id,
-                response.status_code,
-                response.text[:100],
-            )
-            return False
-        except Exception:
-            logger.warning("Band DELETE message %s error", message_id, exc_info=True)
-            return False
-
-    async def prune_room(self, keep_count: int = LIVE_BAND_PRUNE_HEADROOM) -> int:
-        """Prune old messages from the room to free space.
-
-        Fetches the current messages (oldest-first via page iteration) and
-        deletes the oldest ones until only ``keep_count`` remain.  This keeps
-        the room under Band's per-room message limit without manual
-        intervention.
-
-        Args:
-            keep_count: Target number of messages to keep in the room after
-                pruning.  Defaults to :data:`LIVE_BAND_PRUNE_HEADROOM`.
-
-        Returns:
-            The number of messages deleted.
-        """
-        client = self._get_client()
-        base_url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
-
-        # Collect ALL message ids by paginating through the room history.
-        all_ids: list[str] = []
-        page = 1
-        while True:
-            params: dict[str, str | int] = {
-                "status": "all",
-                "page_size": 100,
-                "page": page,
-            }
-            try:
-                response = await client.get(base_url, params=params)
-            except Exception:
-                logger.warning("Failed to fetch messages for pruning (page %d)", page)
-                break
+            response = await client.post(url, json={})
             if response.status_code >= 400:
-                logger.warning(
-                    "Failed to fetch messages for pruning (%d)", response.status_code
+                raise BandLiveError(
+                    f"Band room creation failed ({response.status_code}): "
+                    f"{response.text[:200]}"
                 )
-                break
             data = response.json()
-            messages = data.get("data") or data.get("messages") or []
-            if not messages:
-                break
-            for raw in messages:
-                if isinstance(raw, dict) and raw.get("id"):
-                    all_ids.append(str(raw["id"]))
-            # If we got fewer than the page size, we've reached the end.
-            if len(messages) < 100:
-                break
-            page += 1
-
-        total = len(all_ids)
-        if total <= keep_count:
-            logger.info("Room has %d messages — no pruning needed", total)
-            return 0
-
-        # all_ids are ordered newest-first (Band default).  The IDs to
-        # delete are the tail (oldest messages).
-        ids_to_delete = all_ids[keep_count:]
-        deleted = 0
-        for mid in ids_to_delete:
-            ok = await self.delete_message(mid)
-            if ok:
-                deleted += 1
-
-        logger.info(
-            "Pruned %d/%d old messages from room (keeping %d newest)",
-            deleted,
-            len(ids_to_delete),
-            keep_count,
-        )
-        return deleted
+            created = data.get("data") if isinstance(data, dict) else None
+            new_chat_id = created.get("id") if isinstance(created, dict) else None
+            if not new_chat_id:
+                raise BandLiveError(
+                    f"Band room creation returned no id: {response.text[:200]}"
+                )
+            self._chat_id = str(new_chat_id)
+            logger.warning(
+                "Room rotated: %s -> %s (old room preserved at limit)",
+                old_chat_id,
+                self._chat_id,
+            )
+        except BandLiveError:
+            raise
+        except Exception as exc:
+            raise BandLiveError(
+                f"Band room creation error: {exc}"
+            ) from exc
 
     async def post_event(
         self, agent: str, event_type: str, content: str, metadata: dict | None = None
@@ -801,7 +736,7 @@ class LiveBandClient:
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
         # Band's list endpoint uses page_size (max 100) and a status filter.
-        params: dict[str, object] = {
+        params: dict[str, str | int] = {
             "status": "all",
             "page_size": min(limit, 100),
         }
