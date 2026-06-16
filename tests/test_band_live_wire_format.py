@@ -262,7 +262,6 @@ def test_post_message_uses_x_api_key_header() -> None:
 
 
 def test_post_event_wraps_in_event_envelope() -> None:
-    """Body must be {"event": {message_type, content}} — not flat."""
     client, captured = _make_capturing_client()
     _run(
         client.post_event(

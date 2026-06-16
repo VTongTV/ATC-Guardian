@@ -16,6 +16,7 @@ dependencies = [
     "langchain-openai>=0.3.0",
     "langgraph>=0.4.0",
     "python-dotenv>=1.0.0",
+    "crewai[litellm]>=1.14.3",
 ]
 
 [dependency-groups]

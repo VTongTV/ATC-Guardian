@@ -35,6 +35,45 @@ from shared.band_client import SimulatedBandClient, create_band_client
 logger = logging.getLogger(__name__)
 
 
+def _warn_if_live_agents_not_running(settings, mention_map: dict[str, str]) -> None:
+    """Emit a loud banner when live mode has no listening specialist agents.
+
+    In ``BAND_MODE=live`` the backend only *posts* ``@mentions`` into the
+    Band room; it does not run the LLMs. The six specialist agents are
+    standalone processes (``agents/<name>/agent.py``) that connect to Band
+    over WebSocket and actually answer. If they are not running, the room
+    fills with "Coordinator" dispatches that nobody replies to and the
+    AGENT COMMS panel stays at (0) — which is the most common live-mode
+    misconfiguration.
+
+    This function cannot detect the agents over the network (that would
+    require room-membership introspection Band does not expose here), so
+    it instead logs a high-visibility banner with the exact remedy.
+
+    Args:
+        settings: Loaded application settings (read for band_mode + keys).
+        mention_map: Handle → agent UUID map (logged for cross-checking).
+    """
+    if settings.band_mode != "live":
+        return
+
+    mapped = sum(1 for v in mention_map.values() if v)
+    logger.warning("=" * 72)
+    logger.warning("BAND_MODE=live — the backend will POST @mentions to Band,")
+    logger.warning("but the specialist agents are SEPARATE processes that must")
+    logger.warning("be launched independently. Right now the Band room will")
+    logger.warning("receive @conflict-detector / @weather-analyst / @emergency-")
+    logger.warning("response dispatches that NOTHING answers, so AGENT COMMS")
+    logger.warning("will stay at (0) until the agent processes are running.")
+    logger.warning("  -> Launch them:  uv run python scripts/start_all.py")
+    logger.warning("     (or open a window per agent under agents/<name>/)")
+    logger.warning("  -> Mapped agents: %d/%d handles have a UUID.", mapped, len(mention_map))
+    logger.warning("  -> Backend posts as BAND_API_KEY; if that key is the")
+    logger.warning("     Coordinator's, every posted message will appear as")
+    logger.warning("     \"Coordinator\" in the Band room — this is expected.")
+    logger.warning("=" * 72)
+
+
 async def _collaboration_loop(
     service: SimulationService,
     poster: BandPoster,
@@ -126,6 +165,7 @@ async def lifespan(app: FastAPI):
         chat_id=settings.band_room_id,
         mention_map=mention_map,
     )
+    _warn_if_live_agents_not_running(settings, mention_map)
     if isinstance(band_client, SimulatedBandClient):
         from backend.app.services.sim_agents import (
             register_sim_agents,

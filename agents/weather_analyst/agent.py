@@ -29,22 +29,59 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _crewai_model_string(provider: str, model_name: str) -> str:
+    """Build a litellm-routable model string for CrewAI's ``LLM``.
+
+    CrewAI builds its LLM via ``LLM(model=self.model)`` which routes the
+    call through **litellm**. litellm selects the backend purely from a
+    provider prefix on the model string (e.g. ``openrouter/...``), so a
+    bare model name like ``nex-agi/nex-n2-pro:free`` fails with
+    ``LLM Provider NOT provided``. This helper prepends the litellm
+    provider prefix when the model doesn't already carry one.
+
+    The Coordinator (``ChatOpenAI``) and PydanticAI agents
+    (``openai:<model>``) are unaffected — only CrewAI goes through
+    litellm, so this prefixing stays local to the Weather Analyst.
+
+    Args:
+        provider: The shared ``LLM_PROVIDER`` value (``openrouter`` /
+            ``aimlapi``).
+        model_name: Resolved model name from :func:`resolve_llm_config`.
+
+    Returns:
+        A model string litellm can route (e.g.
+        ``openrouter/nex-agi/nex-n2-pro:free``).
+    """
+    # litellm-recognised prefixes — leave already-routable strings alone.
+    known_prefixes = ("openrouter/", "openai/", "anthropic/", "aimlapi/")
+    if any(model_name.startswith(p) for p in known_prefixes):
+        return model_name
+    if provider == "openrouter":
+        return f"openrouter/{model_name}"
+    return model_name
+
+
 def create_weather_analyst_adapter() -> CrewAIAdapter:
     """Create the CrewAIAdapter for the Weather Analyst agent.
 
     Uses CrewAI with the multi-provider LLM configuration resolved
     from shared environment variables.  The resolved API key and base
     URL are injected into ``OPENAI_API_KEY`` and ``OPENAI_BASE_URL``
-    env vars so CrewAI's LLM class picks them up.
+    env vars so CrewAI's LLM class picks them up, and the model string
+    is prefixed with the litellm provider so CrewAI's litellm-backed
+    ``LLM`` can route the call.
 
     Returns:
         Configured CrewAIAdapter instance.
     """
     base_url, api_key, model_name = resolve_llm_config("WEATHER_ANALYST_MODEL")
+    provider = os.getenv("LLM_PROVIDER", "openrouter")
+    crewai_model = _crewai_model_string(provider, model_name)
     logger.info(
-        "LLM provider=%s model=%s base_url=%s",
-        os.getenv("LLM_PROVIDER", "openrouter"),
+        "LLM provider=%s model=%s crewai_model=%s base_url=%s",
+        provider,
         model_name,
+        crewai_model,
         base_url,
     )
 
@@ -53,7 +90,7 @@ def create_weather_analyst_adapter() -> CrewAIAdapter:
     os.environ["OPENAI_BASE_URL"] = base_url
 
     return CrewAIAdapter(
-        model=model_name,
+        model=crewai_model,
         role="Weather Analyst",
         goal="Monitor SIGMETs and weather hazards affecting aircraft, issue deviation advisories",
         backstory=(

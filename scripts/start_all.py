@@ -32,6 +32,9 @@ FRONTEND_PORT = 5173
 
 # Track all child processes for cleanup
 _processes: list[subprocess.Popen] = []
+# Track open log-file handles so they stay alive (Popen keeps a ref but
+# Python could GC the wrapper) and cleanup can flush/close them.
+_log_file_handles: list[object] = []
 
 
 def start_backend() -> subprocess.Popen:
@@ -51,11 +54,16 @@ def start_backend() -> subprocess.Popen:
     return proc
 
 
-def start_agent(agent_name: str) -> subprocess.Popen | None:
+def start_agent(agent_name: str, log_dir: Path | None = None) -> subprocess.Popen | None:
     """Start a single agent process using the project venv.
+
+    If *log_dir* is provided, stdout and stderr are tee'd to
+    ``<log_dir>/agent_<name>.log`` (created/overwritten on each start)
+    so that agent output is capturable without juggling console windows.
 
     Args:
         agent_name: Directory name under agents/ (e.g. "coordinator").
+        log_dir: Optional directory for agent log files.
 
     Returns:
         Subprocess handle, or None if the agent directory is missing.
@@ -66,13 +74,31 @@ def start_agent(agent_name: str) -> subprocess.Popen | None:
         return None
 
     logger.info("Starting agent: %s...", agent_name)
+
+    # Resolve the log file path if a log directory is configured.
+    lf = None
+    log_path: Path | None = None
+    if log_dir is not None:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / f"agent_{agent_name}.log"
+        lf = log_path.open("w")
+
     proc = subprocess.Popen(
         [sys.executable, "agent.py"],
         cwd=agent_dir,
         env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT)},
+        stdout=lf,
+        stderr=subprocess.STDOUT if lf else None,
     )
     _processes.append(proc)
-    logger.info("Agent %s started (PID %d)", agent_name, proc.pid)
+    if lf is not None:
+        _log_file_handles.append(lf)
+    logger.info(
+        "Agent %s started (PID %d)%s",
+        agent_name,
+        proc.pid,
+        f" → {log_path}" if log_path else "",
+    )
     return proc
 
 
@@ -103,7 +129,7 @@ def start_frontend() -> subprocess.Popen | None:
 
 
 def cleanup() -> None:
-    """Terminate all child processes gracefully."""
+    """Terminate all child processes gracefully and close log files."""
     logger.info("Shutting down %d processes...", len(_processes))
     for proc in _processes:
         if proc.poll() is None:
@@ -114,13 +140,22 @@ def cleanup() -> None:
                 proc.kill()
             except Exception:
                 pass
+    # Close any open log-file handles inherited by Popen.
+    for lf in _log_file_handles:
+        try:
+            lf.close()  # type: ignore[union-attr]
+        except Exception:
+            pass
     logger.info("All processes stopped")
 
 
 def main() -> None:
     """Start all ATC Guardian services."""
+    log_dir = PROJECT_ROOT / "logs"
+
     logger.info("ATC Guardian System Starter")
     logger.info("Project root: %s", PROJECT_ROOT)
+    logger.info("Agent logs:  %s", log_dir)
     logger.info("Press Ctrl+C to stop all services")
     logger.info("=" * 50)
 
@@ -132,7 +167,7 @@ def main() -> None:
     start_backend()
     time.sleep(2)  # Give backend time to start
 
-    # Start agents
+    # Start agents — each writes output to logs/agent_<name>.log
     agent_names = [
         "coordinator",
         "conflict_detector",
@@ -142,7 +177,7 @@ def main() -> None:
         "emergency_response",
     ]
     for agent_name in agent_names:
-        start_agent(agent_name)
+        start_agent(agent_name, log_dir=log_dir)
         time.sleep(0.5)  # Stagger agent starts
 
     # Start frontend
@@ -153,6 +188,7 @@ def main() -> None:
     logger.info("Backend:  http://localhost:%d", BACKEND_PORT)
     logger.info("Frontend: http://localhost:%d", FRONTEND_PORT)
     logger.info("Docs:     http://localhost:%d/docs", BACKEND_PORT)
+    logger.info("Logs:     %s\\", log_dir)
 
     # Wait for any process to exit
     try:

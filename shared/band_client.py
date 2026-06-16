@@ -452,6 +452,14 @@ LIVE_BAND_MESSAGES_PATH: str = "/api/v1/agent/chats/{chat_id}/messages"
 LIVE_BAND_EVENTS_PATH: str = "/api/v1/agent/chats/{chat_id}/events"
 LIVE_BAND_TIMEOUT_SECONDS: int = 10
 
+#: How many messages to prune when the room hits its limit.  We delete
+#: more than one to avoid pruning on every single post during a burst.
+LIVE_BAND_PRUNE_BATCH: int = 50
+
+#: Headroom target — after pruning we want the room well below the
+#: limit so there is room for a full advisory chain before the next prune.
+LIVE_BAND_PRUNE_HEADROOM: int = 200
+
 #: Supported structured event types for the /events endpoint, per the
 #: Band API's ChatEventMessageType. The text message type goes through
 #: the /messages endpoint instead.
@@ -525,6 +533,20 @@ class LiveBandClient:
     async def post_message(self, message: BandOutboundMessage) -> str:
         """POST a message to the Band room.
 
+        Band's ``/messages`` endpoint enforces ``minItems: 1`` on
+        ``mentions`` — a message *must* address at least one agent (and
+        cannot mention the poster itself). When ``message.mentions`` is
+        empty — e.g. the veto/system notes emitted by
+        ``BandPoster._post_vetoed_lower_priority`` — there is no agent
+        to address, so the post is routed to the ``/events`` endpoint as
+        a ``task`` event instead. That endpoint has no mention
+        requirement and still carries ``metadata``, so structured veto
+        payloads survive the round-trip.
+
+        If the room has hit its message limit (Band returns a 403 with
+        ``limit_reached``), the oldest messages are pruned automatically
+        and the post is retried once.
+
         Args:
             message: Outbound message with content and @mentions.
 
@@ -532,8 +554,26 @@ class LiveBandClient:
             The Band-assigned message id.
 
         Raises:
-            BandLiveError: If the Band API returns a non-2xx status.
+            BandLiveError: If the Band API returns a non-2xx status
+                (other than a recoverable limit_reached).
         """
+        # No agent to address -> /messages would 422 (minItems: 1).
+        # Route to /events as a structured note instead.
+        if not message.mentions:
+            return await self.post_event(
+                agent=message.sender,
+                event_type="task",
+                content=message.content,
+                metadata={
+                    **(dict(message.metadata) if message.metadata else {}),
+                    **(
+                        {"correlation_id": message.correlation_id}
+                        if message.correlation_id is not None
+                        else {}
+                    ),
+                },
+            )
+
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
 
@@ -572,14 +612,134 @@ class LiveBandClient:
 
         response = await client.post(url, json=payload)
         if response.status_code >= 400:
-            raise BandLiveError(
-                f"Band POST messages failed ({response.status_code}): {response.text[:200]}"
-            )
+            # Auto-prune and retry on limit_reached.
+            if self._is_limit_reached(response):
+                logger.warning(
+                    "Band room hit message limit — auto-pruning %d oldest messages",
+                    LIVE_BAND_PRUNE_BATCH,
+                )
+                await self.prune_room(keep_count=LIVE_BAND_PRUNE_HEADROOM)
+                response = await client.post(url, json=payload)
+            if response.status_code >= 400:
+                raise BandLiveError(
+                    f"Band POST messages failed ({response.status_code}): {response.text[:200]}"
+                )
         data = response.json()
         # Successful responses are wrapped as {"data": {"id": ...}}.
         sent = data.get("data") if isinstance(data, dict) else None
         sent_id = sent.get("id") if isinstance(sent, dict) else None
         return str(sent_id or data.get("id") or uuid.uuid4().hex)
+
+    @staticmethod
+    def _is_limit_reached(response: httpx.Response) -> bool:
+        """Check whether a failed response is the room message-limit error."""
+        if response.status_code != 403:
+            return False
+        try:
+            body = response.json()
+            return body.get("error", {}).get("code") == "limit_reached"
+        except Exception:
+            return False
+
+    async def delete_message(self, message_id: str) -> bool:
+        """DELETE a single message from the Band room.
+
+        Args:
+            message_id: The Band-assigned message id to delete.
+
+        Returns:
+            True if the delete succeeded (2xx), False otherwise.
+        """
+        client = self._get_client()
+        url = (
+            f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
+            f"/{message_id}"
+        )
+        try:
+            response = await client.delete(url)
+            if response.status_code < 300:
+                return True
+            logger.warning(
+                "Band DELETE message %s failed (%d): %s",
+                message_id,
+                response.status_code,
+                response.text[:100],
+            )
+            return False
+        except Exception:
+            logger.warning("Band DELETE message %s error", message_id, exc_info=True)
+            return False
+
+    async def prune_room(self, keep_count: int = LIVE_BAND_PRUNE_HEADROOM) -> int:
+        """Prune old messages from the room to free space.
+
+        Fetches the current messages (oldest-first via page iteration) and
+        deletes the oldest ones until only ``keep_count`` remain.  This keeps
+        the room under Band's per-room message limit without manual
+        intervention.
+
+        Args:
+            keep_count: Target number of messages to keep in the room after
+                pruning.  Defaults to :data:`LIVE_BAND_PRUNE_HEADROOM`.
+
+        Returns:
+            The number of messages deleted.
+        """
+        client = self._get_client()
+        base_url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
+
+        # Collect ALL message ids by paginating through the room history.
+        all_ids: list[str] = []
+        page = 1
+        while True:
+            params: dict[str, str | int] = {
+                "status": "all",
+                "page_size": 100,
+                "page": page,
+            }
+            try:
+                response = await client.get(base_url, params=params)
+            except Exception:
+                logger.warning("Failed to fetch messages for pruning (page %d)", page)
+                break
+            if response.status_code >= 400:
+                logger.warning(
+                    "Failed to fetch messages for pruning (%d)", response.status_code
+                )
+                break
+            data = response.json()
+            messages = data.get("data") or data.get("messages") or []
+            if not messages:
+                break
+            for raw in messages:
+                if isinstance(raw, dict) and raw.get("id"):
+                    all_ids.append(str(raw["id"]))
+            # If we got fewer than the page size, we've reached the end.
+            if len(messages) < 100:
+                break
+            page += 1
+
+        total = len(all_ids)
+        if total <= keep_count:
+            logger.info("Room has %d messages — no pruning needed", total)
+            return 0
+
+        # all_ids are ordered newest-first (Band default).  The IDs to
+        # delete are the tail (oldest messages).
+        ids_to_delete = all_ids[keep_count:]
+        deleted = 0
+        for mid in ids_to_delete:
+            ok = await self.delete_message(mid)
+            if ok:
+                deleted += 1
+
+        logger.info(
+            "Pruned %d/%d old messages from room (keeping %d newest)",
+            deleted,
+            len(ids_to_delete),
+            keep_count,
+        )
+        return deleted
 
     async def post_event(
         self, agent: str, event_type: str, content: str, metadata: dict | None = None
