@@ -203,7 +203,7 @@ function App(): React.ReactElement {
                       }}
                     >
                       <div>
-                        {c.cpa.aircraft_a_callsign} <=> {c.cpa.aircraft_b_callsign}
+                        {c.cpa.aircraft_a_callsign} {" \u21C4 "} {c.cpa.aircraft_b_callsign}
                       </div>
                       <div>
                         CPA: {c.cpa.min_distance_nm}nm / {c.cpa.time_to_cpa_seconds}s
