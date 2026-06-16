@@ -55,6 +55,17 @@ class ResolveRequest(BaseModel):
     controller_note: str | None = Field(default=None, description="Optional free-text note")
 
 
+class ProposalRequest(BaseModel):
+    """Request body for creating a new decision proposal."""
+
+    scenario_id: str = Field(description="Active scenario id")
+    advisory_kind: str = Field(description="conflict | weather | emergency")
+    summary: str = Field(description="One-line UI description")
+    agent_recommendation: str = Field(description="The specialist + reviewer recommendation")
+    reviewer_verdict: str = Field(description="Safety Reviewer verdict (APPROVE/REJECT/MODIFY)")
+    evidence: dict | None = Field(default=None, description="Optional structured evidence")
+
+
 @router.get("/pending")
 async def list_pending() -> list[dict]:
     """List all pending controller decisions, oldest first.
@@ -64,6 +75,51 @@ async def list_pending() -> list[dict]:
     """
     service = _get_service()
     return [d.model_dump(mode="json") for d in service.list_pending()]
+
+
+@router.post("/proposal")
+async def create_proposal(body: ProposalRequest) -> dict:
+    """Create a new pending decision proposal.
+
+    Allows external agents (or test scripts) to submit proposals
+    via REST, enabling both live-mode agents and the demo UI to
+    populate the controller decisions panel.
+
+    Args:
+        body: Proposal fields matching DecisionService.create_proposal().
+
+    Returns:
+        The newly created pending decision.
+    """
+    service = _get_service()
+    decision = await service.create_proposal(
+        scenario_id=body.scenario_id,
+        advisory_kind=body.advisory_kind,
+        summary=body.summary,
+        agent_recommendation=body.agent_recommendation,
+        reviewer_verdict=body.reviewer_verdict,
+        evidence=body.evidence,
+    )
+    return decision.model_dump(mode="json")
+
+
+@router.post("/seed-demo")
+async def seed_demo_decision() -> dict:
+    """Create a demo pending decision for testing the UI.
+
+    Returns:
+        The created decision.
+    """
+    service = _get_service()
+    decision = await service.create_proposal(
+        scenario_id="SCN-A",
+        advisory_kind="conflict",
+        summary="Demo: UAL123/DAL456 CPA 2.3nm — vector trailing aircraft right 15°",
+        agent_recommendation="Vector trailing aircraft right 15° to restore separation",
+        reviewer_verdict="APPROVE",
+        evidence={"cpa_nm": 2.3, "pair": "UAL123/DAL456"},
+    )
+    return decision.model_dump(mode="json")
 
 
 @router.post("/{decision_id}/resolve")

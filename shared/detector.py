@@ -13,7 +13,6 @@ refine these detections — they do not replace them.
 from __future__ import annotations
 
 import math
-import uuid
 from datetime import datetime, timezone
 
 from ml.conflict import scan_pairwise_conflicts
@@ -62,9 +61,10 @@ def detect_conflicts(aircraft: list[AircraftState]) -> list[ConflictAdvisory]:
     advisories: list[ConflictAdvisory] = []
 
     for cpa in scan_pairwise_conflicts(aircraft):
+        pair_key = "-".join(sorted([cpa.aircraft_a_callsign, cpa.aircraft_b_callsign]))
         advisories.append(
             ConflictAdvisory(
-                advisory_id=f"ADV-CONFLICT-{uuid.uuid4().hex[:8]}",
+                advisory_id=f"ADV-CONFLICT-{pair_key}",
                 timestamp=now,
                 severity=_classify_conflict_severity(cpa),
                 status=ConflictStatus.DETECTED,
@@ -95,7 +95,7 @@ def detect_emergencies(aircraft: list[AircraftState]) -> list[EmergencyDeclarati
 
         emergencies.append(
             EmergencyDeclaration(
-                emergency_id=f"EMRG-{uuid.uuid4().hex[:8]}",
+                emergency_id=f"EMRG-{ac.callsign}",
                 timestamp=now,
                 callsign=ac.callsign,
                 phase=_classify_emergency_phase(ac.squawk),
@@ -200,7 +200,7 @@ def detect_weather_hazards(
 
         advisories.append(
             WeatherAdvisory(
-                advisory_id=f"ADV-WX-{uuid.uuid4().hex[:8]}",
+                advisory_id=f"ADV-WX-{sigmet.sigmet_id}",
                 timestamp=now,
                 severity=sigmet.severity,
                 sigmet=sigmet,

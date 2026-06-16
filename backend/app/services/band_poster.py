@@ -217,7 +217,10 @@ class BandPoster:
     async def _safe_post(self, message: BandOutboundMessage, agent: str) -> None:
         """Post a message, logging and swallowing transport errors.
 
-        A failed post must not crash the simulation loop.
+        A failed post must not crash the simulation loop.  If the room
+        limit is reached, :meth:`LiveBandClient.post_message` will
+        auto-prune and retry, so the caller does not need to handle
+        limit_reached specially.
 
         Args:
             message: The outbound message.

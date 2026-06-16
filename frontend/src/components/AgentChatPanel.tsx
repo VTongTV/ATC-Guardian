@@ -10,6 +10,8 @@ const AGENT_COLORS: Record<string, string> = {
   "weather-analyst":   "#33ccff",
   "ground-ops":        "#33ff33",
   "emergency-response": "#ff3333",
+  "safety-reviewer":   "#aa88ff", // the 6th roster agent was missing
+  "system-ingest":     "#888888", // backend posts @mentions as this identity
 };
 
 /** Short labels for agents. */
@@ -19,7 +21,15 @@ const AGENT_SHORT: Record<string, string> = {
   "weather-analyst":   "WTHR",
   "ground-ops":        "GND",
   "emergency-response": "EMRG",
+  "safety-reviewer":   "SAFE",
+  "system-ingest":     "SYS",
 };
+
+/** Event types that represent a readable agent-to-agent message — i.e.
+ *  the conversational content the chat panel should show, as opposed to
+ *  internal tool_call / tool_result / thought plumbing. Band tags agent
+ *  replies as "text"; "message" is kept for compatibility. */
+const CONVERSATIONAL_TYPES: ReadonlySet<string> = new Set(["text", "message"]);
 
 /** Format ISO timestamp to HH:MM:SS. */
 function formatTime(ts: string): string {
@@ -85,10 +95,24 @@ export function AgentChatPanel(): React.ReactElement {
 
     async function fetchMessages(): Promise<void> {
       try {
-        const res = await fetch("/audit/events?event_type=message&limit=50");
+        // Agent replies are stored as event_type "text" (Band's ChatMessage
+        // type) — never literally "message". Pull the full recent set and
+        // keep only the conversational types so the chat view stays clean
+        // (no thought/tool_call/tool_result plumbing). The backend's
+        // event_type filter is single-valued, so we filter client-side.
+        const res = await fetch("/audit/events?limit=100");
         if (!res.ok) return;
         const data: AuditEvent[] = await res.json();
-        if (alive) setMessages(data);
+        if (alive) {
+          // Backend returns newest-first; a chat reads oldest-first, so
+          // take the most recent conversational events and reverse them.
+          setMessages(
+            data
+              .filter((e) => CONVERSATIONAL_TYPES.has(e.event_type))
+              .slice(0, 50)
+              .reverse(),
+          );
+        }
       } catch {
         /* backend offline */
       }
@@ -131,10 +155,36 @@ export function AgentChatPanel(): React.ReactElement {
     padding: "0.25rem 0.5rem",
   };
 
+  const emptyStyle: React.CSSProperties = {
+    color: "#666",
+    fontSize: "0.6rem",
+    fontFamily: "monospace",
+    padding: "0.5rem",
+    lineHeight: 1.5,
+    fontStyle: "italic",
+  };
+
   return (
     <div style={panelStyle}>
       <div style={headerStyle}>AGENT COMMS ({messages.length})</div>
       <div style={listStyle}>
+        {messages.length === 0 ? (
+          <div style={emptyStyle}>
+            No agent messages yet.
+            <br />
+            <br />
+            In live mode this usually means the specialist agent processes are
+            not running. The backend posts @mentions into the Band room, but
+            only the separate agent processes (conflict-detector,
+            weather-analyst, emergency-response, ...) actually answer them.
+            <br />
+            <br />
+            Start them with:{" "}
+            <span style={{ color: "#33ff33" }}>
+              uv run python scripts/start_all.py
+            </span>
+          </div>
+        ) : null}
         {messages.map((evt) => {
           const isTarget = evt.target_agent != null;
           const agentName = isTarget ? evt.target_agent! : evt.agent_name;

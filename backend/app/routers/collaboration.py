@@ -72,9 +72,21 @@ async def collaboration_graph(limit: int = 200) -> dict:
             metadata = json.loads(evt.metadata_json)
         except (json.JSONDecodeError, TypeError):
             continue
+        # Band namespaces agent identities as "org/handle" (e.g.
+        # "vedant.tong/coordinator"). Strip the org prefix so edges
+        # match the AGENT_ROSTER handles used by the frontend nodes.
+        source = evt.agent_name.split("/")[-1] if evt.agent_name else evt.agent_name
         mentions = metadata.get("mentions") or []
         for target in mentions:
-            edge_counter[(evt.agent_name, target)] += 1
+            # Mentions may be a list of strings OR a list of dicts
+            # (e.g. {"handle": "conflict-detector", "id": "..."}).
+            # Normalise to a string for use as a Counter key.
+            if isinstance(target, dict):
+                target = target.get("handle") or target.get("name") or str(target)
+            if not isinstance(target, str):
+                continue
+            target = target.split("/")[-1]
+            edge_counter[(source, target)] += 1
 
     edges = [
         {"source": src, "target": tgt, "weight": count}

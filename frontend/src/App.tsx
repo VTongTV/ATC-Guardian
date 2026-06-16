@@ -1,10 +1,10 @@
 /** ATC Guardian — main application component. */
 
+import React from "react";
 import { RadarView } from "./components/RadarView";
 import { useRadarData } from "./hooks/useRadarData";
 import { useAtcStore } from "./stores/atcStore";
 import { ScenarioControls } from "./components/ScenarioControls";
-import { AuditTimeline } from "./components/AuditTimeline";
 import { AgentChatPanel } from "./components/AgentChatPanel";
 import { DecisionPanel } from "./components/DecisionPanel";
 import { CollaborationFlow } from "./components/CollaborationFlow";
@@ -18,6 +18,35 @@ function App(): React.ReactElement {
   const lastUpdated = useAtcStore((s) => s.lastUpdated);
   const scenarioId = useAtcStore((s) => s.activeScenarioId);
   const elapsedSeconds = useAtcStore((s) => s.elapsedSeconds);
+
+  const [panelWidth, setPanelWidth] = React.useState(() =>
+    typeof window !== "undefined" ? Math.max(320, window.innerWidth * 0.5) : 640
+  );
+  const isDragging = React.useRef(false);
+
+  const handleResizeStart = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      if (!isDragging.current) return;
+      const newWidth = window.innerWidth - moveEvent.clientX;
+      setPanelWidth(Math.max(320, Math.min(newWidth, window.innerWidth * 0.8)));
+    };
+
+    const handleUp = () => {
+      isDragging.current = false;
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
   return (
     <div
@@ -53,18 +82,36 @@ function App(): React.ReactElement {
         </div>
       </header>
 
-      {/* Main content: map + two-column right panel */}
+      {/* Main content: map + resizable side panel */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Radar map — takes most of the space */}
-        <div style={{ flex: 1 }}>
+        {/* Radar map — takes remaining space */}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <RadarView />
         </div>
 
-        {/* Left right column — ScenarioControls + AuditTimeline */}
+        {/* Resize handle */}
+        <div
+          onMouseDown={handleResizeStart}
+          style={{
+            width: "4px",
+            cursor: "col-resize",
+            backgroundColor: "#1a3a1a",
+            flexShrink: 0,
+            transition: "background-color 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            (e.target as HTMLElement).style.backgroundColor = "#33ff33";
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLElement).style.backgroundColor = "#1a3a1a";
+          }}
+        />
+
+        {/* Right side panel — resizable */}
         <div
           style={{
-            width: "220px",
-            minWidth: "220px",
+            width: `${panelWidth}px`,
+            minWidth: "320px",
             display: "flex",
             flexDirection: "column",
             borderLeft: "1px solid #1a3a1a",
@@ -78,24 +125,6 @@ function App(): React.ReactElement {
           {/* Controller decisions — human-on-the-loop approval */}
           <DecisionPanel />
 
-          {/* Audit timeline — fills remaining space */}
-          <div style={{ flex: 1, overflow: "hidden" }}>
-            <AuditTimeline />
-          </div>
-        </div>
-
-        {/* Right column — AgentChatPanel + alert summary */}
-        <div
-          style={{
-            width: "280px",
-            minWidth: "280px",
-            display: "flex",
-            flexDirection: "column",
-            borderLeft: "1px solid #1a3a1a",
-            backgroundColor: "#0d0d0d",
-            overflow: "hidden",
-          }}
-        >
           {/* Alert summary */}
           <div
             style={{
@@ -109,7 +138,6 @@ function App(): React.ReactElement {
               A/C: {aircraft.length} | CNFLT: {conflicts.length} | EMG:{" "}
               {emergencies.length}
             </div>
-
             {/* Emergency list */}
             {emergencies.length > 0 && (
               <div style={{ marginBottom: "0.25rem" }}>
@@ -134,7 +162,6 @@ function App(): React.ReactElement {
                 ))}
               </div>
             )}
-
             {/* Conflict list */}
             {conflicts.length > 0 && (
               <div>

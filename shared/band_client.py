@@ -450,6 +450,7 @@ class SimulatedBandClient:
 LIVE_BAND_BASE_URL: str = "https://app.band.ai"
 LIVE_BAND_MESSAGES_PATH: str = "/api/v1/agent/chats/{chat_id}/messages"
 LIVE_BAND_EVENTS_PATH: str = "/api/v1/agent/chats/{chat_id}/events"
+LIVE_BAND_CHATS_PATH: str = "/api/v1/agent/chats"
 LIVE_BAND_TIMEOUT_SECONDS: int = 10
 
 #: Supported structured event types for the /events endpoint, per the
@@ -525,6 +526,20 @@ class LiveBandClient:
     async def post_message(self, message: BandOutboundMessage) -> str:
         """POST a message to the Band room.
 
+        Band's ``/messages`` endpoint enforces ``minItems: 1`` on
+        ``mentions`` — a message *must* address at least one agent (and
+        cannot mention the poster itself). When ``message.mentions`` is
+        empty — e.g. the veto/system notes emitted by
+        ``BandPoster._post_vetoed_lower_priority`` — there is no agent
+        to address, so the post is routed to the ``/events`` endpoint as
+        a ``task`` event instead. That endpoint has no mention
+        requirement and still carries ``metadata``, so structured veto
+        payloads survive the round-trip.
+
+        If the room has hit its message limit (Band returns a 403 with
+        ``limit_reached``), the oldest messages are pruned automatically
+        and the post is retried once.
+
         Args:
             message: Outbound message with content and @mentions.
 
@@ -532,8 +547,26 @@ class LiveBandClient:
             The Band-assigned message id.
 
         Raises:
-            BandLiveError: If the Band API returns a non-2xx status.
+            BandLiveError: If the Band API returns a non-2xx status
+                (other than a recoverable limit_reached).
         """
+        # No agent to address -> /messages would 422 (minItems: 1).
+        # Route to /events as a structured note instead.
+        if not message.mentions:
+            return await self.post_event(
+                agent=message.sender,
+                event_type="task",
+                content=message.content,
+                metadata={
+                    **(dict(message.metadata) if message.metadata else {}),
+                    **(
+                        {"correlation_id": message.correlation_id}
+                        if message.correlation_id is not None
+                        else {}
+                    ),
+                },
+            )
+
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
 
@@ -572,14 +605,76 @@ class LiveBandClient:
 
         response = await client.post(url, json=payload)
         if response.status_code >= 400:
-            raise BandLiveError(
-                f"Band POST messages failed ({response.status_code}): {response.text[:200]}"
-            )
+            # Auto-rotate room on limit_reached.
+            if self._is_limit_reached(response):
+                logger.warning(
+                    "Band room hit message limit — auto-rotating to a new room"
+                )
+                await self._rotate_room()
+                # Retry with the new room id.
+                url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
+                response = await client.post(url, json=payload)
+            if response.status_code >= 400:
+                raise BandLiveError(
+                    f"Band POST messages failed ({response.status_code}): {response.text[:200]}"
+                )
         data = response.json()
         # Successful responses are wrapped as {"data": {"id": ...}}.
         sent = data.get("data") if isinstance(data, dict) else None
         sent_id = sent.get("id") if isinstance(sent, dict) else None
         return str(sent_id or data.get("id") or uuid.uuid4().hex)
+
+    @staticmethod
+    def _is_limit_reached(response: httpx.Response) -> bool:
+        """Check whether a failed response is the room message-limit error."""
+        if response.status_code != 403:
+            return False
+        try:
+            body = response.json()
+            return body.get("error", {}).get("code") == "limit_reached"
+        except Exception:
+            return False
+
+    async def _rotate_room(self) -> None:
+        """Create a new Band chat room and switch the client to it.
+
+        Called automatically when the current room hits the message limit
+        (``limit_reached`` 403). The old room remains for reference; all
+        future posts go to the new room. The agents will discover the new
+        room on their next WebSocket reconnect cycle.
+
+        Raises:
+            BandLiveError: If the room creation call fails.
+        """
+        client = self._get_client()
+        url = f"{self._base_url}{LIVE_BAND_CHATS_PATH}"
+        old_chat_id = self._chat_id
+        try:
+            response = await client.post(url, json={})
+            if response.status_code >= 400:
+                raise BandLiveError(
+                    f"Band room creation failed ({response.status_code}): "
+                    f"{response.text[:200]}"
+                )
+            data = response.json()
+            created = data.get("data") if isinstance(data, dict) else None
+            new_chat_id = created.get("id") if isinstance(created, dict) else None
+            if not new_chat_id:
+                raise BandLiveError(
+                    f"Band room creation returned no id: {response.text[:200]}"
+                )
+            self._chat_id = str(new_chat_id)
+            logger.warning(
+                "Room rotated: %s -> %s (old room preserved at limit)",
+                old_chat_id,
+                self._chat_id,
+            )
+        except BandLiveError:
+            raise
+        except Exception as exc:
+            raise BandLiveError(
+                f"Band room creation error: {exc}"
+            ) from exc
 
     async def post_event(
         self, agent: str, event_type: str, content: str, metadata: dict | None = None
@@ -641,7 +736,7 @@ class LiveBandClient:
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_MESSAGES_PATH.format(chat_id=self._chat_id)}"
         # Band's list endpoint uses page_size (max 100) and a status filter.
-        params: dict[str, object] = {
+        params: dict[str, str | int] = {
             "status": "all",
             "page_size": min(limit, 100),
         }

@@ -230,19 +230,33 @@ function useEmergencyBlinkStyles(): void {
 
 // ─── Leaflet Map Sub-Components ─────────────────────────────────────
 
-/** Component that updates the map center when scenario data changes. */
+/** Component that updates the map center only on scenario change.
+
+User pan/zoom is preserved between ticks — the map is only reset
+when the active scenario ID changes (e.g. the user picks a new
+scenario from the dropdown). Routine snapshot updates that carry
+the same center coordinates must NOT call setView, otherwise the
+user's manual zoom/pan would be overwritten every 4 s.
+*/
 function MapCenterUpdater({
   center,
   zoom,
+  scenarioId,
+  prevScenarioIdRef,
 }: {
   center: [number, number];
   zoom: number;
+  scenarioId: string;
+  prevScenarioIdRef: React.MutableRefObject<string>;
 }): null {
   const map = useMap();
 
   useEffect(() => {
-    map.setView(center, zoom, { animate: true, duration: 1.0 });
-  }, [map, center, zoom]);
+    if (prevScenarioIdRef.current !== scenarioId) {
+      prevScenarioIdRef.current = scenarioId;
+      map.setView(center, zoom, { animate: true, duration: 1.0 });
+    }
+  }, [map, center, zoom, scenarioId, prevScenarioIdRef]);
 
   return null;
 }
@@ -595,9 +609,13 @@ export function RadarView(): React.ReactElement {
   const centerLng = useAtcStore((s) => s.centerLongitude);
   const selectedCallsign = useAtcStore((s) => s.selectedCallsign);
   const selectAircraft = useAtcStore((s) => s.selectAircraft);
+  const scenarioId = useAtcStore((s) => s.activeScenarioId);
 
   // Inject emergency blink CSS keyframes
   useEmergencyBlinkStyles();
+
+  // Track previous scenario ID so we only reset the map view on change.
+  const prevScenarioRef = useRef(scenarioId);
 
   const center: [number, number] = [centerLat, centerLng];
 
@@ -631,7 +649,7 @@ export function RadarView(): React.ReactElement {
           maxZoom={19}
         />
 
-        <MapCenterUpdater center={center} zoom={9} />
+        <MapCenterUpdater center={center} zoom={9} scenarioId={scenarioId} prevScenarioIdRef={prevScenarioRef} />
 
         {/* Range rings around center */}
         {RANGE_RINGS_NM.map((nm) => (

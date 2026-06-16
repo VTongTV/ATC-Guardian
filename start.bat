@@ -1,67 +1,27 @@
 @echo off
-REM ============================================================================
-REM ATC Guardian - local dev launcher
-REM   Opens two console windows:
-REM     1) FastAPI backend  -> http://localhost:8000   (docs: /docs)
-REM     2) Vite frontend    -> http://localhost:5173
-REM   Close a window (or Ctrl+C) to stop that service.
-REM ============================================================================
+REM ATC Guardian launcher — delegates to Python for all the real work.
+REM Batch is only kept so that double-clicking or running `start` from
+REM cmd.exe works.  All logic (mode detection, agent launch, log
+REM routing) lives in scripts/start.py where path handling is sane.
+REM
+REM Usage:  start          (same as: python scripts/start.py)
+REM         start --sim    (force offline mode)
+REM         start --live   (force live mode)
+REM         start --help   (show all options)
 
 setlocal
 
-REM --- resolve project root (location of this script) ------------------------
+REM --- resolve project root (directory of this script) ---
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
 cd /d "%ROOT%"
 
-echo ATC Guardian local launcher
-echo Project root: %ROOT%
-echo.
-
-REM --- sanity: warn if .env is missing ---------------------------------------
-if not exist ".env" (
-    echo [WARN] No .env found. Copy .env.example to .env and fill it in.
-    echo        Backend will still start but agent LLM calls will fail.
-    echo.
-)
-
-REM --- pick a python: prefer the project venv, else fall back to uv ----------
+REM --- prefer the project venv, else fall back to uv ---
 set "PYTHON=%ROOT%\.venv\Scripts\python.exe"
-if not exist "%PYTHON%" (
-    echo [INFO]  .venv not found, using 'uv run python'.
-    set "PYCMD=uv run python"
+if exist "%PYTHON%" (
+    "%PYTHON%" "%ROOT%\scripts\start.py" %*
 ) else (
-    set "PYCMD="%PYTHON%""
+    uv run python "%ROOT%\scripts\start.py" %*
 )
-
-REM --- 1) backend ------------------------------------------------------------
-echo Starting backend on http://localhost:8000 ...
-start "ATC Backend" cmd /k "cd /d "%ROOT%" && %PYCMD% -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload"
-
-REM give the backend a moment before the frontend polls it
-timeout /t 2 /nobreak >nul
-
-REM --- 2) frontend -----------------------------------------------------------
-where npm >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARN] npm not found on PATH — skipping frontend.
-    echo        Install Node.js from https://nodejs.org to run the frontend.
-    goto :done
-)
-
-echo Starting frontend on http://localhost:5173 ...
-start "ATC Frontend" cmd /k "cd /d "%ROOT%\frontend" && npm.cmd run dev"
-
-:done
-echo.
-echo ============================================================
-echo  Backend:  http://localhost:8000
-echo  Frontend: http://localhost:5173
-echo  Docs:     http://localhost:8000/docs
-echo.
-echo  Close each console window (or Ctrl+C) to stop that service.
-echo ============================================================
-echo.
-echo This window can be closed; services keep running in their own windows.
 
 endlocal
