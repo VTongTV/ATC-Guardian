@@ -175,16 +175,20 @@ async def lifespan(app: FastAPI):
         mention_map=mention_map,
     )
     _warn_if_live_agents_not_running(settings, mention_map)
-    if isinstance(band_client, SimulatedBandClient):
-        from backend.app.services.sim_agents import (
-            register_sim_agents,
-            set_band_client,
-            set_decision_service,
-        )
 
+    # Always wire the decision service into sim_agents so that the
+    # coordinator handler (and any future agent handler) can create
+    # proposals in both sim and live modes.
+    from backend.app.services.sim_agents import (
+        register_sim_agents,
+        set_band_client,
+        set_decision_service as set_sim_decision_service,
+    )
+
+    if isinstance(band_client, SimulatedBandClient):
         register_sim_agents(band_client)
-        set_decision_service(decision_service)
         set_band_client(band_client)
+    set_sim_decision_service(decision_service)
 
     poster = BandPoster(band_client)
     ingester = AdvisoryIngester(band_client, audit_service)
