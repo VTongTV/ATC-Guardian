@@ -88,7 +88,8 @@ function renderContent(text: string): React.ReactNode[] {
 /** AgentChatPanel — polls audit message events and renders a chat-room view. */
 export function AgentChatPanel(): React.ReactElement {
   const [messages, setMessages] = useState<AuditEvent[]>([]);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const prevLenRef = useRef(0);
 
   useEffect(() => {
     let alive = true;
@@ -127,9 +128,16 @@ export function AgentChatPanel(): React.ReactElement {
     };
   }, []);
 
-  // Auto-scroll when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (only if already near bottom)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = listRef.current;
+    if (!el) return;
+    // Scroll if user is near the bottom (within 80px) or if message count increased
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (nearBottom || messages.length > prevLenRef.current) {
+      el.scrollTop = el.scrollHeight;
+    }
+    prevLenRef.current = messages.length;
   }, [messages.length]);
 
   const panelStyle: React.CSSProperties = {
@@ -167,7 +175,7 @@ export function AgentChatPanel(): React.ReactElement {
   return (
     <div style={panelStyle}>
       <div style={headerStyle}>AGENT COMMS ({messages.length})</div>
-      <div style={listStyle}>
+      <div ref={listRef} style={listStyle}>
         {messages.length === 0 ? (
           <div style={emptyStyle}>
             No agent messages yet.
@@ -230,7 +238,6 @@ export function AgentChatPanel(): React.ReactElement {
             </div>
           );
         })}
-        <div ref={bottomRef} />
       </div>
     </div>
   );

@@ -161,16 +161,7 @@ export function CollaborationFlow(): React.ReactElement {
           );
         })}
       </div>
-      {edges.length > 0 && (
-        <div style={{ padding: "0.2rem 0.5rem", fontSize: "0.55rem", color: "#666" }}>
-          <div style={{ color: "#33ff33", marginBottom: "0.1rem" }}>FLOWS</div>
-          {edges.slice(0, 6).map((e, i) => (
-            <div key={i} style={{ color: "#999" }}>
-              {e.source} → {e.target} ({e.weight})
-            </div>
-          ))}
-        </div>
-      )}
+
     </div>
   );
 }
