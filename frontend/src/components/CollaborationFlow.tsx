@@ -157,7 +157,7 @@ export function CollaborationFlow(): React.ReactElement {
           const isFlashing = flash?.agent === node.name;
           return (
             <div
-              key={`${node.name}-${flash?.agent === node.name ? flash.tick : ""}`}
+              key={`${node.name}-${isFlashing ? flash!.tick : ""}`}
               title={node.framework_note}
               className={isFlashing ? "agent-flash" : undefined}
               style={{
@@ -167,7 +167,7 @@ export function CollaborationFlow(): React.ReactElement {
                 padding: "0.25rem",
                 fontSize: "0.6rem",
                 position: "relative",
-                [--flash-colour as string]: node.colour,
+                ["--flash-colour" as string]: node.colour,
               } as React.CSSProperties}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
