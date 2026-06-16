@@ -4,12 +4,12 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/data/:path*", "destination": "${BACKEND_URL}/data/:path*" },
-    { "source": "/audit/:path*", "destination": "${BACKEND_URL}/audit/:path*" },
-    { "source": "/weather/:path*", "destination": "${BACKEND_URL}/weather/:path*" },
-    { "source": "/decisions/:path*", "destination": "${BACKEND_URL}/decisions/:path*" },
-    { "source": "/collaboration/:path*", "destination": "${BACKEND_URL}/collaboration/:path*" },
-    { "source": "/whatif/:path*", "destination": "${BACKEND_URL}/whatif/:path*" },
-    { "source": "/ws/:path*", "destination": "${BACKEND_URL}/ws/:path*" }
+    { "source": "/data/:path*", "destination": "https://atc-guardian-backend.onrender.com/data/:path*" },
+    { "source": "/audit/:path*", "destination": "https://atc-guardian-backend.onrender.com/audit/:path*" },
+    { "source": "/weather/:path*", "destination": "https://atc-guardian-backend.onrender.com/weather/:path*" },
+    { "source": "/decisions/:path*", "destination": "https://atc-guardian-backend.onrender.com/decisions/:path*" },
+    { "source": "/collaboration/:path*", "destination": "https://atc-guardian-backend.onrender.com/collaboration/:path*" },
+    { "source": "/whatif/:path*", "destination": "https://atc-guardian-backend.onrender.com/whatif/:path*" },
+    { "source": "/ws/:path*", "destination": "https://atc-guardian-backend.onrender.com/ws/:path*" }
   ]
 }
