@@ -288,18 +288,6 @@ export function AgentChatPanel(): React.ReactElement {
         {messages.length === 0 ? (
           <div style={emptyStyle}>
             No agent messages yet.
-            <br />
-            <br />
-            In live mode this usually means the specialist agent processes are
-            not running. The backend posts @mentions into the Band room, but
-            only the separate agent processes (conflict-detector,
-            weather-analyst, emergency-response, ...) actually answer them.
-            <br />
-            <br />
-            Start them with:{" "}
-            <span style={{ color: "#33ff33" }}>
-              uv run python scripts/start_all.py
-            </span>
           </div>
         ) : null}
         {messages.map((evt) => {

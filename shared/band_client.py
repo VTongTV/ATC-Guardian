@@ -451,6 +451,7 @@ LIVE_BAND_BASE_URL: str = "https://app.band.ai"
 LIVE_BAND_MESSAGES_PATH: str = "/api/v1/agent/chats/{chat_id}/messages"
 LIVE_BAND_EVENTS_PATH: str = "/api/v1/agent/chats/{chat_id}/events"
 LIVE_BAND_CHATS_PATH: str = "/api/v1/agent/chats"
+LIVE_BAND_PARTICIPANTS_PATH: str = "/api/v1/agent/chats/{chat_id}/participants"
 LIVE_BAND_TIMEOUT_SECONDS: int = 10
 
 #: Supported structured event types for the /events endpoint, per the
@@ -484,6 +485,7 @@ class LiveBandClient:
         chat_id: str,
         base_url: str = LIVE_BAND_BASE_URL,
         mention_map: dict[str, str] | None = None,
+        owner_user_id: str | None = None,
     ) -> None:
         """Initialise the live client.
 
@@ -498,11 +500,15 @@ class LiveBandClient:
                 through this map before posting. Handles absent from the
                 map are passed through verbatim (Band will reject them
                 with a 422, surfacing a missing mapping loudly).
+            owner_user_id: Optional Band user UUID for the human owner.
+                When a room is rotated, the new room is populated with all
+                agents + this user so every participant sees messages.
         """
         self._api_key = api_key
         self._chat_id = chat_id
         self._base_url = base_url.rstrip("/")
         self._mention_map = dict(mention_map) if mention_map else {}
+        self._owner_user_id = owner_user_id
         self._client: httpx.AsyncClient | None = None
 
     @property
@@ -636,20 +642,22 @@ class LiveBandClient:
             return False
 
     async def _rotate_room(self) -> None:
-        """Create a new Band chat room and switch the client to it.
+        """Create a new Band chat room, add all agents + owner, and switch.
 
         Called automatically when the current room hits the message limit
         (``limit_reached`` 403). The old room remains for reference; all
-        future posts go to the new room. The agents will discover the new
-        room on their next WebSocket reconnect cycle.
+        future posts go to the new room. The new room is populated with
+        every agent from the mention map plus the human owner (if configured)
+        so that all participants can see messages immediately.
 
         Raises:
-            BandLiveError: If the room creation call fails.
+            BandLiveError: If the room creation or participant addition fails.
         """
         client = self._get_client()
         url = f"{self._base_url}{LIVE_BAND_CHATS_PATH}"
         old_chat_id = self._chat_id
         try:
+            # Step 1: Create the room.
             response = await client.post(url, json={})
             if response.status_code >= 400:
                 raise BandLiveError(
@@ -669,12 +677,67 @@ class LiveBandClient:
                 old_chat_id,
                 self._chat_id,
             )
+
+            # Step 2: Add all agents + human owner as participants.
+            await self._populate_room(self._chat_id)
+
         except BandLiveError:
             raise
         except Exception as exc:
             raise BandLiveError(
                 f"Band room creation error: {exc}"
             ) from exc
+
+    async def _populate_room(self, chat_id: str) -> None:
+        """Add all agents and the human owner to a chat room.
+
+        Uses the mention_map (handle → UUID) to add each agent, then
+        adds the owner user if configured. Failures to add individual
+        participants are logged but do not block room rotation — the
+        room is still usable, just without that participant.
+
+        Args:
+            chat_id: The chat room to populate.
+        """
+        client = self._get_client()
+        participants_url = f"{self._base_url}{LIVE_BAND_PARTICIPANTS_PATH.format(chat_id=chat_id)}"
+
+        # Collect all unique UUIDs: agents from mention map + owner.
+        uuids_to_add: list[str] = []
+        seen: set[str] = set()
+        for agent_uuid in self._mention_map.values():
+            if agent_uuid and agent_uuid not in seen:
+                seen.add(agent_uuid)
+                uuids_to_add.append(agent_uuid)
+        if self._owner_user_id and self._owner_user_id not in seen:
+            uuids_to_add.append(self._owner_user_id)
+
+        for participant_id in uuids_to_add:
+            try:
+                resp = await client.post(
+                    participants_url,
+                    json={"participant": {"participant_id": participant_id, "role": "member"}},
+                )
+                if resp.status_code >= 400:
+                    logger.warning(
+                        "Failed to add participant %s to room %s (%s): %s",
+                        participant_id[:8],
+                        chat_id[:8],
+                        resp.status_code,
+                        resp.text[:200],
+                    )
+                else:
+                    logger.info(
+                        "Added participant %s to room %s",
+                        participant_id[:8],
+                        chat_id[:8],
+                    )
+            except Exception:
+                logger.exception(
+                    "Error adding participant %s to room %s",
+                    participant_id[:8],
+                    chat_id[:8],
+                )
 
     async def post_event(
         self, agent: str, event_type: str, content: str, metadata: dict | None = None
@@ -801,6 +864,7 @@ def create_band_client(
     api_key: str | None = None,
     chat_id: str | None = None,
     mention_map: dict[str, str] | None = None,
+    owner_user_id: str | None = None,
 ) -> BandClient:
     """Build the appropriate BandClient for the requested mode.
 
@@ -810,13 +874,16 @@ def create_band_client(
         chat_id: Band room id (required for ``live``).
         mention_map: Optional handle→UUID map (required for ``live`` to
             post valid ``mentions[].id`` values). Ignored in ``sim`` mode.
+        owner_user_id: Optional Band user UUID for the human owner.
+            When a room is rotated, the new room is populated with all
+            agents + this user. Ignored in ``sim`` mode.
 
     Returns:
         A :class:`BandClient` implementation.
 
     Raises:
         ValueError: If ``mode`` is unknown or ``live`` is requested
-            without credentials.
+        without credentials.
     """
     if mode == "sim":
         client: BandClient = SimulatedBandClient()
@@ -832,11 +899,13 @@ def create_band_client(
             api_key=api_key,
             chat_id=chat_id,
             mention_map=mention_map,
+            owner_user_id=owner_user_id,
         )
         logger.info(
-            "BandClient created in live mode (chat=%s, %d agents mapped)",
+            "BandClient created in live mode (chat=%s, %d agents mapped, owner=%s)",
             chat_id,
             len(mention_map or {}),
+            "yes" if owner_user_id else "no",
         )
         return client
 

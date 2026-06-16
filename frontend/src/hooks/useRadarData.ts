@@ -21,6 +21,9 @@ const POLL_INTERVAL_MS = 4000;
 /** Reconnect delay in milliseconds after WebSocket disconnect. */
 const RECONNECT_DELAY_MS = 3000;
 
+/** Maximum consecutive WebSocket failures before giving up and using HTTP polling only. */
+const MAX_WS_FAILURES = 3;
+
 /**
  * Custom hook that connects to the backend WebSocket for real-time
  * radar data, with automatic reconnection and HTTP polling fallback.
@@ -37,6 +40,7 @@ export function useRadarData(): {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFetchingRef = useRef(false);
+  const wsFailCountRef = useRef(0);
 
   const processSnapshot = useCallback(
     (data: unknown) => {
@@ -57,6 +61,7 @@ export function useRadarData(): {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        wsFailCountRef.current = 0; // Reset on successful connect
         setLoading(false);
         setError(null);
         logger.info("WebSocket connected to %s", wsUrl);
@@ -72,12 +77,20 @@ export function useRadarData(): {
       };
 
       ws.onclose = () => {
+        if (wsFailCountRef.current >= MAX_WS_FAILURES) {
+          logger.info("WebSocket failed %d times — sticking with HTTP polling", MAX_WS_FAILURES);
+          return; // Stop reconnecting
+        }
         logger.info("WebSocket disconnected, reconnecting in %dms", RECONNECT_DELAY_MS);
         reconnectTimerRef.current = setTimeout(connectWebSocket, RECONNECT_DELAY_MS);
       };
 
       ws.onerror = () => {
-        setError("WebSocket connection failed, falling back to HTTP polling");
+        wsFailCountRef.current++;
+        if (wsFailCountRef.current >= MAX_WS_FAILURES) {
+          setError("WebSocket unavailable — using HTTP polling");
+          logger.info("WebSocket failed %d times — switching to HTTP polling only", MAX_WS_FAILURES);
+        }
         ws.close();
       };
 

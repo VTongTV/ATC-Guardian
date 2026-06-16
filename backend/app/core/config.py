@@ -176,6 +176,7 @@ class AppSettings(BaseSettings):
     )
     band_api_key: str | None = Field(default=None, description="Band API key for the system-ingest identity")
     band_room_id: str | None = Field(default=None, description="Band room ID for agent communication")
+    band_owner_user_id: str | None = Field(default=None, description="Band user UUID for the human owner (added to rotated rooms)")
 
     # LLM provider settings (embedded for backend convenience)
     # Agents load these independently, but the backend may need them for
