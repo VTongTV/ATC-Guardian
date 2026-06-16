@@ -1,12 +1,7 @@
-/** ATC Guardian — collaboration flow visualiser.
+/** CollaborationFlow — agent node grid with live @mention edges and flash-on-reply. */
 
-Renders the six-agent team as a node grid with framework badges and
-highlights live @mention edges derived from the audit log. Makes the
-cross-framework collaboration (LangGraph / Pydantic AI / CrewAI) — a
-genuine competitive edge — visible to judges.
-*/
-
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAtcStore } from "../stores/atcStore";
 
 /** Agent node metadata from GET /collaboration/graph. */
 interface AgentNode {
@@ -45,9 +40,44 @@ const FRAMEWORK_COLORS: Record<string, string> = {
   "CrewAI": "#1abc9c",
 };
 
-/** CollaborationFlow — agent node grid with live @mention edges. */
+/** Inject a one-shot CSS keyframe for the flash animation. */
+let _styleInjected = false;
+function injectFlashKeyframes(): void {
+  if (_styleInjected || typeof document === "undefined") return;
+  _styleInjected = true;
+  const sheet = document.createElement("style");
+  sheet.textContent = `
+    @keyframes agentFlash {
+      0%   { box-shadow: 0 0 0px transparent; }
+      30%  { box-shadow: 0 0 12px 2px var(--flash-colour); }
+      100% { box-shadow: 0 0 0px transparent; }
+    }
+    .agent-flash { animation: agentFlash 1.2s ease-out; }
+  `;
+  document.head.appendChild(sheet);
+}
+
+/** CollaborationFlow — agent node grid with live @mention edges and flash-on-reply. */
 export function CollaborationFlow(): React.ReactElement {
   const [graph, setGraph] = useState<CollaborationGraph | null>(null);
+  const [flash, setFlash] = useState<{ agent: string; tick: number } | null>(null);
+  const lastReplyAgent = useAtcStore((s) => s.lastReplyAgent);
+  const lastReplyTick = useAtcStore((s) => s.lastReplyTick);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Inject the keyframe CSS once.
+  useEffect(() => { injectFlashKeyframes(); }, []);
+
+  // When the store signals a new reply, arm a flash for that agent.
+  useEffect(() => {
+    if (!lastReplyAgent || lastReplyTick === 0) return;
+    setFlash({ agent: lastReplyAgent, tick: lastReplyTick });
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(null), 1500);
+    return () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    };
+  }, [lastReplyAgent, lastReplyTick]);
 
   useEffect(() => {
     let alive = true;
@@ -124,10 +154,12 @@ export function CollaborationFlow(): React.ReactElement {
           const fwColour = FRAMEWORK_COLORS[node.framework] ?? "#888";
           const activity = incomingWeight[node.name] ?? 0;
           const isActive = activity > 0;
+          const isFlashing = flash?.agent === node.name;
           return (
             <div
-              key={node.name}
+              key={`${node.name}-${flash?.agent === node.name ? flash.tick : ""}`}
               title={node.framework_note}
+              className={isFlashing ? "agent-flash" : undefined}
               style={{
                 border: `1px solid ${isActive ? node.colour : "#222"}`,
                 borderLeft: `3px solid ${node.colour}`,
@@ -135,7 +167,8 @@ export function CollaborationFlow(): React.ReactElement {
                 padding: "0.25rem",
                 fontSize: "0.6rem",
                 position: "relative",
-              }}
+                [--flash-colour as string]: node.colour,
+              } as React.CSSProperties}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ color: node.colour, fontWeight: "bold" }}>

@@ -108,13 +108,24 @@ function App(): React.ReactElement {
           }}
         />
 
-        {/* Right side panel — 2×2 grid layout */}
+        {/* Right side panel — 3-row left column + AGENT COMMS spanning right + AGENT TEAM footer
+         *
+         *  ┌──────────────┬──────────────┐
+         *  │  SCENARIO     │              │
+         *  ├──────────────┤  AGENT COMMS  │
+         *  │  CONFLICTS    │              │
+         *  ├──────────────┤              │
+         *  │  DECISIONS    │              │
+         *  ├──────────────┴──────────────┤
+         *  │        AGENT TEAM            │
+         *  └──────────────────────────────┘
+         */}
         <div
           style={{
             width: `${panelWidth}px`,
             minWidth: "480px",
             display: "grid",
-            gridTemplateRows: "auto 1fr",
+            gridTemplateRows: "1fr 1fr 1fr auto",
             gridTemplateColumns: "1fr 1fr",
             gap: "0px",
             borderLeft: "1px solid #1a3a1a",
@@ -122,39 +133,37 @@ function App(): React.ReactElement {
             overflow: "hidden",
           }}
         >
-          {/* ── Top-left: Scenario controls ── */}
-          <div style={{ overflow: "hidden", borderRight: "1px solid #1a3a1a" }}>
+          {/* ── Row 1, Col 1: Scenario controls ── */}
+          <div style={{ overflow: "auto", borderRight: "1px solid #1a3a1a", borderBottom: "1px solid #1a3a1a" }}>
             <ScenarioControls />
           </div>
 
-          {/* ── Top-right: Controller decisions ── */}
-          <div style={{ overflow: "hidden" }}>
-            <DecisionPanel />
+          {/* ── Row 1–3, Col 2: Agent comms (spans all 3 rows) ── */}
+          <div style={{ overflow: "hidden", gridRow: "1 / 4", gridColumn: "2" }}>
+            <AgentChatPanel />
           </div>
 
-          {/* ── Bottom-left: Conflicts/Emergencies + Agent Team ── */}
+          {/* ── Row 2, Col 1: Conflicts / Emergencies ── */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              overflow: "hidden",
+              overflow: "auto",
               borderRight: "1px solid #1a3a1a",
+              borderBottom: "1px solid #1a3a1a",
             }}
           >
-            {/* Alert summary */}
             <div
               style={{
                 padding: "0.4rem 0.5rem",
                 fontSize: "0.7rem",
-                borderBottom: "1px solid #1a3a1a",
-                flexShrink: 0,
+                color: "#888",
               }}
             >
               <div style={{ marginBottom: "0.2rem" }}>
                 A/C: {aircraft.length} | CNFLT: {conflicts.length} | EMG:{" "}
                 {emergencies.length}
               </div>
-              {/* Emergency list */}
               {emergencies.length > 0 && (
                 <div style={{ marginBottom: "0.2rem" }}>
                   <div style={{ color: "#ff3333", fontWeight: "bold", fontSize: "0.7rem" }}>
@@ -178,7 +187,6 @@ function App(): React.ReactElement {
                   ))}
                 </div>
               )}
-              {/* Conflict list */}
               {conflicts.length > 0 && (
                 <div>
                   <div style={{ color: "#ffaa00", fontWeight: "bold", fontSize: "0.7rem" }}>
@@ -195,7 +203,7 @@ function App(): React.ReactElement {
                       }}
                     >
                       <div>
-                        {c.cpa.aircraft_a_callsign} &lt;=&gt; {c.cpa.aircraft_b_callsign}
+                        {c.cpa.aircraft_a_callsign} <=> {c.cpa.aircraft_b_callsign}
                       </div>
                       <div>
                         CPA: {c.cpa.min_distance_nm}nm / {c.cpa.time_to_cpa_seconds}s
@@ -205,15 +213,16 @@ function App(): React.ReactElement {
                 </div>
               )}
             </div>
-            {/* Agent team — fills remaining bottom-left */}
-            <div style={{ flex: 1, overflow: "hidden" }}>
-              <CollaborationFlow />
-            </div>
           </div>
 
-          {/* ── Bottom-right: Agent comms (chat, largest panel) ── */}
-          <div style={{ overflow: "hidden" }}>
-            <AgentChatPanel />
+          {/* ── Row 3, Col 1: Controller decisions ── */}
+          <div style={{ overflow: "auto", borderRight: "1px solid #1a3a1a" }}>
+            <DecisionPanel />
+          </div>
+
+          {/* ── Footer: Agent team — spans both columns ── */}
+          <div style={{ gridColumn: "1 / -1", overflow: "hidden", borderTop: "1px solid #1a3a1a" }}>
+            <CollaborationFlow />
           </div>
         </div>
       </div>

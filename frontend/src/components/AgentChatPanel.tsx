@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { AuditEvent } from "../lib/types";
+import { useAtcStore } from "../stores/atcStore";
 
 /** Color mapping for agent names. */
 const AGENT_COLORS: Record<string, string> = {
@@ -178,6 +179,7 @@ export function AgentChatPanel(): React.ReactElement {
   const [messages, setMessages] = useState<AuditEvent[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const prevLenRef = useRef(0);
+  const noteAgentReply = useAtcStore((s) => s.noteAgentReply);
 
   useEffect(() => {
     let alive = true;
@@ -195,12 +197,16 @@ export function AgentChatPanel(): React.ReactElement {
         if (alive) {
           // Backend returns newest-first; a chat reads oldest-first, so
           // take the most recent conversational events and reverse them.
-          setMessages(
-            data
-              .filter((e) => CONVERSATIONAL_TYPES.has(e.event_type))
-              .slice(0, 50)
-              .reverse(),
-          );
+          const next = data
+            .filter((e) => CONVERSATIONAL_TYPES.has(e.event_type))
+            .slice(0, 50)
+            .reverse();
+          // When new messages arrive, signal the AGENT TEAM panel to flash
+          // the node of the agent that sent the most recent one.
+          if (next.length > prevLenRef.current && next.length > 0) {
+            noteAgentReply(next[next.length - 1].agent_name);
+          }
+          setMessages(next);
         }
       } catch {
         /* backend offline */
@@ -214,7 +220,7 @@ export function AgentChatPanel(): React.ReactElement {
       alive = false;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [noteAgentReply]);
 
   // Auto-scroll to the newest message. We scroll unconditionally whenever
   // the message count grows (new arrivals should always be in view), and
@@ -308,7 +314,10 @@ export function AgentChatPanel(): React.ReactElement {
           const fromName = isTarget ? evt.agent_name : "system";
           const color = agentColor(agentName);
           const fromColor = agentColor(fromName);
-          const accent = isTarget ? color : fromColor;
+          // The box is colour-coded to the SENDER (the agent who wrote the
+          // message), not the recipient — otherwise every reply that
+          // @mentions the coordinator renders in coordinator's colour.
+          const accent = fromColor;
 
           return (
             <div
