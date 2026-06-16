@@ -81,7 +81,6 @@ export function ScenarioControls(): React.ReactElement {
   const aircraftCount = useAtcStore((s) => s.aircraft.length);
   const setActiveScenario = useAtcStore((s) => s.setActiveScenario);
 
-  const [isLive, setIsLive] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [demoPlaying, setDemoPlaying] = useState(false);
   const [narration, setNarration] = useState<string>("");
@@ -142,10 +141,6 @@ export function ScenarioControls(): React.ReactElement {
     [setActiveScenario],
   );
 
-  const handleToggleLive = useCallback(() => {
-    setIsLive((prev) => !prev);
-  }, []);
-
   const panelStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -170,35 +165,6 @@ export function ScenarioControls(): React.ReactElement {
     padding: "0.25rem",
     width: "100%",
     outline: "none",
-  };
-
-  const toggleRowStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "0.5rem",
-  };
-
-  const toggleTrackStyle: React.CSSProperties = {
-    width: "32px",
-    height: "16px",
-    borderRadius: "8px",
-    backgroundColor: isLive ? "#33ff33" : "#333",
-    cursor: "pointer",
-    position: "relative",
-    transition: "background-color 0.2s",
-    flexShrink: 0,
-  };
-
-  const toggleThumbStyle: React.CSSProperties = {
-    width: "12px",
-    height: "12px",
-    borderRadius: "50%",
-    backgroundColor: "#fff",
-    position: "absolute",
-    top: "2px",
-    left: isLive ? "18px" : "2px",
-    transition: "left 0.2s",
   };
 
   const statRowStyle: React.CSSProperties = {
@@ -232,16 +198,6 @@ export function ScenarioControls(): React.ReactElement {
       {/* Scenario description */}
       <div style={{ fontSize: "0.6rem", color: "#888", padding: "0.2rem 0", lineHeight: 1.4 }}>
         {SCENARIOS.find((s) => s.id === activeScenarioId)?.description ?? "Select a scenario."}
-      </div>
-
-      {/* Live / Simulated toggle */}
-      <div style={toggleRowStyle}>
-        <span style={{ ...labelStyle, color: isLive ? "#33ff33" : "#888" }}>
-          {isLive ? "LIVE" : "SIM"}
-        </span>
-        <div style={toggleTrackStyle} onClick={handleToggleLive} role="button" tabIndex={0}>
-          <div style={toggleThumbStyle} />
-        </div>
       </div>
 
       {/* Guided demo button */}
