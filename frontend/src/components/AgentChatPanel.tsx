@@ -7,7 +7,7 @@
  * inside plain text are highlighted in cyan on top of the markdown.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { AuditEvent } from "../lib/types";
@@ -222,26 +222,20 @@ export function AgentChatPanel(): React.ReactElement {
     };
   }, [noteAgentReply]);
 
-  // Auto-scroll to the newest message. We scroll unconditionally whenever
-  // the message count grows (new arrivals should always be in view), and
-  // also on the first populate. When the count is unchanged we only
-  // re-stick to the bottom if the user is already near it, so manual
-  // scroll-up to read history is respected. requestAnimationFrame ensures
-  // the new DOM is painted before we measure scrollHeight.
-  useEffect(() => {
+  // Auto-scroll to the newest message. useLayoutEffect fires before
+  // the browser paints so there is no "flash of top-then-bottom".
+  useLayoutEffect(() => {
     const el = listRef.current;
-    const prevLen = prevLenRef.current;
-    // Always advance the watermark, even when we early-return.
-    prevLenRef.current = messages.length;
     if (!el) return;
+    const prevLen = prevLenRef.current;
+    prevLenRef.current = messages.length;
     const grew = messages.length > prevLen;
     const firstPopulate = prevLen === 0 && messages.length > 0;
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    // Always scroll on first populate or when new messages arrive.
+    // When count is unchanged, only re-stick if user is near bottom.
     if (grew || firstPopulate || nearBottom) {
-      const raf = window.requestAnimationFrame(() => {
-        if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-      });
-      return () => window.cancelAnimationFrame(raf);
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages.length]);
 
@@ -309,14 +303,13 @@ export function AgentChatPanel(): React.ReactElement {
           </div>
         ) : null}
         {messages.map((evt) => {
-          const isTarget = evt.target_agent != null;
-          const agentName = isTarget ? evt.target_agent! : evt.agent_name;
-          const fromName = isTarget ? evt.agent_name : "system";
+          // fromName = the agent that SENT the message (drives colour)
+          // agentName = the recipient (or sender if no target)
+          const fromName = evt.agent_name;
+          const agentName = evt.target_agent ?? evt.agent_name;
           const color = agentColor(agentName);
           const fromColor = agentColor(fromName);
-          // The box is colour-coded to the SENDER (the agent who wrote the
-          // message), not the recipient — otherwise every reply that
-          // @mentions the coordinator renders in coordinator's colour.
+          // Box is colour-coded to the SENDER.
           const accent = fromColor;
 
           return (
