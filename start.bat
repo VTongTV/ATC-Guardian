@@ -76,14 +76,12 @@ if /i "!MODE!"=="live:ok" (
     echo.
     echo [INFO] BAND_MODE=live with valid agent credentials.
     echo [INFO] Starting 6 agent processes ^(one window each^)...
-    echo [INFO] Agent logs will be written to: %ROOT%\logs\agent_*.log
+    echo [INFO] Agent logs: %ROOT%\logs\agent_*.log
     echo.
-    if not exist "%ROOT%\logs" mkdir "%ROOT%\logs"
-    set "PYTHONPATH=%ROOT%"
     for %%A in (!AGENTS!) do (
         if exist "%ROOT%\agents\%%A\agent.py" (
             echo   - starting %%A  ^>  logs\agent_%%A.log
-            start "ATC Agent: %%A" cmd /k "cd /d "%ROOT%\agents\%%A" && set "PYTHONPATH=%ROOT%" && %PYCMD% agent.py > "%ROOT%\logs\agent_%%A.log" 2>&1"
+            start "ATC Agent: %%A" cmd /k "%ROOT%\scripts\_run_agent.bat" "%%A" "%ROOT%" "%PYCMD%" "%ROOT%\logs"
         ) else (
             echo   [WARN] agents\%%A\agent.py not found - skipping %%A
         )
