@@ -167,13 +167,16 @@ RADAR_BLIP_TRAIL_LENGTH: int = 5
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 """OpenRouter API base URL (OpenAI-compatible)."""
 
-OPENROUTER_DEFAULT_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
-"""Default free OpenRouter model — reliable tool-calling, 128K context."""
+OPENROUTER_DEFAULT_MODEL: str = "nex-agi/nex-n2-pro:free"
+"""Default free OpenRouter model — Nex-N2-Pro is a 397B total / 17B active
+agentic MoE that excels at tool-calling and multi-step reasoning, ideal for
+the agent collaboration loop. Free ($0/M tokens). Verified 2026-06."""
 
 OPENROUTER_ROUTER_MODEL: str = "openrouter/free"
 """OpenRouter free router — auto-selects best free model per request."""
 
 OPENROUTER_FREE_MODELS: dict[str, str] = {
+    "agentic": "nex-agi/nex-n2-pro:free",
     "reasoning": "nvidia/nemotron-3-ultra-550b-a55b:free",
     "coding": "qwen/qwen3-coder:free",
     "general": "meta-llama/llama-3.3-70b-instruct:free",

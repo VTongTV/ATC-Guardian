@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 # Band REST API constants
 # ---------------------------------------------------------------------------
 
-BAND_BASE_URL = "https://api.band.ai"
-BAND_MESSAGES_ENDPOINT = "/agent/chats/{chat_id}/messages"
+BAND_BASE_URL = "https://app.band.ai"
+BAND_MESSAGES_ENDPOINT = "/api/v1/agent/chats/{chat_id}/messages"
 BAND_REQUEST_TIMEOUT_SECONDS = 10
 BAND_RETRY_ATTEMPTS = 2
 
@@ -121,7 +121,7 @@ class BandPoller:
                     "Set BAND_API_KEY and BAND_ROOM_ID."
                 )
             self._client = httpx.AsyncClient(
-                headers={"Authorization": f"Bearer {self._api_key}"},
+                headers={"X-API-Key": self._api_key},
                 timeout=BAND_REQUEST_TIMEOUT_SECONDS,
             )
         return self._client
@@ -136,17 +136,36 @@ class BandPoller:
             A BandMessage instance parsed from the raw dict.
         """
         content = raw.get("content", "")
-        message_type = raw.get("type", "text")
-        role = raw.get("role", "unknown")
-        status = raw.get("status", "")
+        # Band ChatMessage: message_type / sender_name / sender_id /
+        # inserted_at (created_at on older shapes). The legacy `role`/
+        # `type` fields are read as a fallback for compatibility.
+        message_type = raw.get("message_type") or raw.get("type") or "text"
+        sender = (
+            raw.get("sender_name")
+            or raw.get("sender_id")
+            or raw.get("role")
+            or "unknown"
+        )
         metadata = raw.get("metadata")
-        created_at = raw.get("created_at", "")
+        created_at = raw.get("inserted_at") or raw.get("created_at") or ""
         message_id = raw.get("id", "")
 
-        # Extract @mentions from content
+        # Extract @mentions. Band stores them in metadata.mentions (a list
+        # of {id, handle, name} dicts); fall back to scanning the content.
         mentions: list[str] = []
-        if content:
-            mention_pattern = re.compile(r"@(\w+)")
+        raw_mentions = (
+            metadata.get("mentions") if isinstance(metadata, dict) else None
+        ) or raw.get("mentions")
+        if isinstance(raw_mentions, list):
+            for m in raw_mentions:
+                if isinstance(m, dict):
+                    handle = m.get("handle") or m.get("name") or m.get("id")
+                else:
+                    handle = m
+                if isinstance(handle, str) and handle:
+                    mentions.append(handle.lstrip("@"))
+        if not mentions and content:
+            mention_pattern = re.compile(r"@(\w[\w-]*)")
             mentions = mention_pattern.findall(content)
 
         # Build metadata JSON string if metadata dict is present
@@ -154,13 +173,10 @@ class BandPoller:
         if metadata:
             metadata_json = json.dumps(metadata)
 
-        # Determine sender from role
-        sender = role if role != "system" else "system"
-
         return BandMessage(
             message_id=str(message_id),
             timestamp=str(created_at),
-            sender=sender,
+            sender=str(sender),
             message_type=str(message_type),
             content=str(content),
             metadata_json=metadata_json,
@@ -191,18 +207,31 @@ class BandPoller:
 
         params = {
             "status": "all",
-            "limit": BAND_MESSAGE_PAGE_SIZE,
+            "page_size": min(BAND_MESSAGE_PAGE_SIZE, 100),
         }
 
         last_error: Exception | None = None
 
         for attempt in range(BAND_RETRY_ATTEMPTS):
             try:
-                response = await client.get(url, params=params)
+                # Send the API key per-request so auth is guaranteed
+                # regardless of how ``_client`` was constructed (lazily
+                # created with default headers, or injected by a test).
+                response = await client.get(
+                    url,
+                    params=params,
+                    headers={"X-API-Key": self._api_key},
+                )
 
                 if response.status_code == 401:
                     raise BandAPIError(
                         "Band authentication failed. Check BAND_API_KEY."
+                    )
+                if response.status_code == 403:
+                    raise BandAPIError(
+                        "Band rejected the request (403). This endpoint "
+                        "requires agent authentication — verify the API key "
+                        "belongs to a participant agent in the room."
                     )
                 if response.status_code == 404:
                     raise BandAPIError(
@@ -221,7 +250,7 @@ class BandPoller:
                     )
 
                 data = response.json()
-                raw_messages = data.get("messages") or data.get("data") or []
+                raw_messages = data.get("data") or data.get("messages") or []
 
                 messages = []
                 for raw_msg in raw_messages:

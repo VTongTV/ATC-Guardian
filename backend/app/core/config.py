@@ -36,8 +36,8 @@ class LLMProviderSettings(BaseSettings):
         description="OpenRouter API base URL",
     )
     openrouter_default_model: str = Field(
-        default="meta-llama/llama-3.3-70b-instruct:free",
-        description="Default free OpenRouter model for agents",
+        default="nex-agi/nex-n2-pro:free",
+        description="Default free OpenRouter model for agents (Nex-N2-Pro — 397B/17B-active agentic MoE, $0/M tokens).",
     )
 
     # ---- AI/ML API (hackathon partner — primary for demo) ----
@@ -214,7 +214,11 @@ class AppSettings(BaseSettings):
     safety_reviewer_agent_id: str | None = Field(default=None, description="Band agent ID for Safety Reviewer")
     safety_reviewer_api_key: str | None = Field(default=None, description="Band API key for Safety Reviewer")
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 def get_settings() -> AppSettings:

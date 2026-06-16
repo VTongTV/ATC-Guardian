@@ -93,7 +93,7 @@ def resolve_llm_config(agent_model_env_var: str) -> tuple[str, str, str]:
         base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         api_key = os.getenv("OPENROUTER_API_KEY", "")
         default_model = os.getenv(
-            "OPENROUTER_DEFAULT_MODEL", "meta-llama/llama-3.3-70b-instruct:free"
+            "OPENROUTER_DEFAULT_MODEL", "nex-agi/nex-n2-pro:free"
         )
     elif provider == "aimlapi":
         base_url = os.getenv("AIMLAPI_BASE_URL", "https://api.aimlapi.com/v1")

@@ -1,10 +1,17 @@
 """Pre-defined demo scenarios for ATC Guardian.
 
-Each scenario initializes aircraft at realistic positions near JFK
-and evolves them over a 5-minute window to demonstrate:
+Each scenario initializes aircraft at realistic positions near
+Mumbai (VABB / Chhatrapati Shivaji Maharaj Intl) and evolves them
+over a 5-minute window to demonstrate:
   A) Converging conflict + resolution
   B) SIGMET weather deviation
   C) Emergency squawk 7700 + descent
+
+NOTE: the original scenarios were authored around JFK (40.63N,
+73.68W). When relocated to Mumbai (19.09N) the longitude offsets
+were scaled by cos(JFK)/cos(Mumbai) ~= 0.803 so that the true
+nautical-mile geometry — and therefore the conflict-detection
+thresholds — is preserved.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -32,13 +39,13 @@ def scenario_a_convergence() -> ScenarioDefinition:
         scenario_id="SCN-A",
         name="Converging Conflict",
         description="Two aircraft on converging headings at FL350 trigger a conflict advisory.",
-        center_latitude=40.63,
-        center_longitude=-73.68,
+        center_latitude=19.09,
+        center_longitude=72.87,
         initial_states=[
             AircraftState(
                 callsign="UAL123",
-                latitude=40.55,
-                longitude=-74.05,
+                latitude=19.01,
+                longitude=72.57,
                 altitude_ft=35000,
                 heading_deg=58.0,
                 speed_kts=460,
@@ -48,8 +55,8 @@ def scenario_a_convergence() -> ScenarioDefinition:
             ),
             AircraftState(
                 callsign="DAL456",
-                latitude=40.72,
-                longitude=-73.50,
+                latitude=19.18,
+                longitude=73.01,
                 altitude_ft=35000,
                 heading_deg=238.0,
                 speed_kts=450,
@@ -59,8 +66,8 @@ def scenario_a_convergence() -> ScenarioDefinition:
             ),
             AircraftState(
                 callsign="AAL100",
-                latitude=40.60,
-                longitude=-73.80,
+                latitude=19.06,
+                longitude=72.77,
                 altitude_ft=28000,
                 heading_deg=90.0,
                 speed_kts=400,
@@ -74,7 +81,7 @@ def scenario_a_convergence() -> ScenarioDefinition:
 
 
 def scenario_b_weather_deviation() -> ScenarioDefinition:
-    """Scenario B: SIGMET for severe turbulence near JFK approach corridor.
+    """Scenario B: SIGMET for severe turbulence near Mumbai approach corridor.
 
     BAW200 is heading into the SIGMET area. Weather Analyst
     detects overlap and issues advisory. Coordinator dispatches
@@ -85,13 +92,13 @@ def scenario_b_weather_deviation() -> ScenarioDefinition:
         scenario_id="SCN-B",
         name="Weather Deviation",
         description="SIGMET for severe turbulence forces aircraft to deviate from approach.",
-        center_latitude=40.63,
-        center_longitude=-73.68,
+        center_latitude=19.09,
+        center_longitude=72.87,
         initial_states=[
             AircraftState(
                 callsign="BAW200",
-                latitude=40.50,
-                longitude=-74.10,
+                latitude=18.96,
+                longitude=72.53,
                 altitude_ft=22000,
                 heading_deg=50.0,
                 speed_kts=380,
@@ -101,8 +108,8 @@ def scenario_b_weather_deviation() -> ScenarioDefinition:
             ),
             AircraftState(
                 callsign="DLH505",
-                latitude=40.70,
-                longitude=-73.60,
+                latitude=19.16,
+                longitude=72.93,
                 altitude_ft=36000,
                 heading_deg=110.0,
                 speed_kts=480,
@@ -112,8 +119,8 @@ def scenario_b_weather_deviation() -> ScenarioDefinition:
             ),
             AircraftState(
                 callsign="AFR890",
-                latitude=40.55,
-                longitude=-73.40,
+                latitude=19.01,
+                longitude=73.09,
                 altitude_ft=32000,
                 heading_deg=330.0,
                 speed_kts=440,
@@ -139,13 +146,13 @@ def scenario_c_emergency() -> ScenarioDefinition:
         scenario_id="SCN-C",
         name="Emergency Descent",
         description="Aircraft declares emergency (7700) and begins rapid descent from FL350.",
-        center_latitude=40.63,
-        center_longitude=-73.68,
+        center_latitude=19.09,
+        center_longitude=72.87,
         initial_states=[
             AircraftState(
                 callsign="SWA770",
-                latitude=40.65,
-                longitude=-73.70,
+                latitude=19.11,
+                longitude=72.85,
                 altitude_ft=35000,
                 heading_deg=90.0,
                 speed_kts=460,
@@ -155,8 +162,8 @@ def scenario_c_emergency() -> ScenarioDefinition:
             ),
             AircraftState(
                 callsign="JBU410",
-                latitude=40.68,
-                longitude=-73.60,
+                latitude=19.14,
+                longitude=72.93,
                 altitude_ft=31000,
                 heading_deg=180.0,
                 speed_kts=420,
@@ -166,8 +173,8 @@ def scenario_c_emergency() -> ScenarioDefinition:
             ),
             AircraftState(
                 callsign="EDV5522",
-                latitude=40.60,
-                longitude=-73.75,
+                latitude=19.06,
+                longitude=72.81,
                 altitude_ft=10000,
                 heading_deg=270.0,
                 speed_kts=250,
@@ -194,8 +201,8 @@ def _scenario_b_sigmet() -> SIGMET:
     corridor so the Weather Analyst has a real hazard to detect.
 
     Returns:
-        A SIGMET valid for one hour from now covering the JFK west
-        arrival gate.
+        A SIGMET valid for one hour from now covering the Mumbai
+        west arrival gate.
     """
     now = datetime.now(timezone.utc)
     return SIGMET(
@@ -204,10 +211,10 @@ def _scenario_b_sigmet() -> SIGMET:
         severity=AlertSeverity.WARNING,
         geometry=SIGMETGeometry(
             points=[
-                PositionGeographic(latitude=40.58, longitude=-74.00),
-                PositionGeographic(latitude=40.62, longitude=-73.85),
-                PositionGeographic(latitude=40.52, longitude=-73.80),
-                PositionGeographic(latitude=40.48, longitude=-73.95),
+                PositionGeographic(latitude=19.04, longitude=72.61),
+                PositionGeographic(latitude=19.08, longitude=72.73),
+                PositionGeographic(latitude=18.98, longitude=72.77),
+                PositionGeographic(latitude=18.94, longitude=72.65),
             ],
             buffer_nm=10.0,
         ),
@@ -222,4 +229,3 @@ def _scenario_b_sigmet() -> SIGMET:
 SCENARIO_SIGMETS: dict[str, list[SIGMET]] = {
     "SCN-B": [_scenario_b_sigmet()],
 }
-
