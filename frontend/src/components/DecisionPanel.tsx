@@ -95,10 +95,9 @@ export function DecisionPanel(): React.ReactElement {
   const panelStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
-    maxHeight: "30%",
+    height: "100%",
     backgroundColor: "#0a0a0a",
     overflow: "hidden",
-    borderBottom: "1px solid #1a3a1a",
   };
 
   const headerStyle: React.CSSProperties = {

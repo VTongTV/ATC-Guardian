@@ -40,6 +40,12 @@ export interface AtcState {
 
   /** Callsign of the currently selected aircraft, or null if none. */
   selectedCallsign: string | null;
+
+  /** Agent name of the most recent reply + a monotonically increasing tick.
+   *  CollaborationFlow watches this to flash the corresponding agent node
+   *  whenever a new reply lands in AGENT COMMS. */
+  lastReplyAgent: string | null;
+  lastReplyTick: number;
 }
 
 /** Actions for mutating ATC state. */
@@ -61,6 +67,10 @@ export interface AtcActions {
 
   /** Select an aircraft by callsign, or deselect if null. Toggles if same callsign. */
   selectAircraft: (callsign: string | null) => void;
+
+  /** Record that a new reply from the given agent just arrived. Bumps a
+   *  tick so subscribers can detect changes even for repeated senders. */
+  noteAgentReply: (agentName: string) => void;
 }
 
 const initialState: AtcState = {
@@ -76,6 +86,8 @@ const initialState: AtcState = {
   isLoading: false,
   error: null,
   selectedCallsign: null,
+  lastReplyAgent: null,
+  lastReplyTick: 0,
 };
 
 export type AtcStore = AtcState & AtcActions;
@@ -112,6 +124,9 @@ export const useAtcStore = create<AtcStore>()((set) => ({
       selectedCallsign:
         state.selectedCallsign === callsign ? null : callsign,
     })),
+
+  noteAgentReply: (agentName: string) =>
+    set({ lastReplyAgent: agentName, lastReplyTick: Date.now() }),
 
   reset: () => set(initialState),
 }));

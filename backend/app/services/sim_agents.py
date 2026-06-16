@@ -178,24 +178,12 @@ async def coordinator_handler(
 def _kind_from_metadata(meta: dict) -> str:
     """Map advisory metadata to a kind label for the decision service.
 
-    Looks at both the structured ``kind`` field and the human-readable
-    ``summary`` so a safety-verdict reply (whose kind is
-    ``safety_verdict``) still resolves to the originating condition type.
-
-    Args:
-        meta: The message metadata.
-
-    Returns:
-        One of conflict / weather / emergency / advisory.
+    Thin wrapper around the shared implementation in ``shared.advisory``;
+    kept locally so existing call sites stay unchanged. See
+    :func:`shared.advisory.kind_from_metadata` for the canonical logic.
     """
-    haystack = f"{meta.get('kind', '')} {meta.get('summary', '')} {meta.get('callsign', '')}".lower()
-    if "conflict" in haystack:
-        return "conflict"
-    if "sigmet" in haystack or "weather" in haystack:
-        return "weather"
-    if "emergency" in haystack or "7700" in haystack or "distress" in haystack:
-        return "emergency"
-    return "advisory"
+    from shared.advisory import kind_from_metadata
+    return kind_from_metadata(meta)
 
 
 async def conflict_detector_handler(

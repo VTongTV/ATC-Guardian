@@ -20,7 +20,7 @@ function App(): React.ReactElement {
   const elapsedSeconds = useAtcStore((s) => s.elapsedSeconds);
 
   const [panelWidth, setPanelWidth] = React.useState(() =>
-    typeof window !== "undefined" ? Math.max(320, window.innerWidth * 0.5) : 640
+    typeof window !== "undefined" ? Math.max(480, window.innerWidth * 0.55) : 720
   );
   const isDragging = React.useRef(false);
 
@@ -31,7 +31,7 @@ function App(): React.ReactElement {
     const handleMove = (moveEvent: MouseEvent) => {
       if (!isDragging.current) return;
       const newWidth = window.innerWidth - moveEvent.clientX;
-      setPanelWidth(Math.max(320, Math.min(newWidth, window.innerWidth * 0.8)));
+      setPanelWidth(Math.max(480, Math.min(newWidth, window.innerWidth * 0.85)));
     };
 
     const handleUp = () => {
@@ -68,6 +68,7 @@ function App(): React.ReactElement {
           padding: "0.4rem 1rem",
           backgroundColor: "#0d0d0d",
           borderBottom: "1px solid #1a3a1a",
+          flexShrink: 0,
         }}
       >
         <h1 style={{ fontSize: "1rem", margin: 0, letterSpacing: "0.1em" }}>
@@ -107,95 +108,122 @@ function App(): React.ReactElement {
           }}
         />
 
-        {/* Right side panel — resizable */}
+        {/* Right side panel — 3-row left column + AGENT COMMS spanning right + AGENT TEAM footer
+         *
+         *  ┌──────────────┬──────────────┐
+         *  │  SCENARIO     │              │
+         *  ├──────────────┤  AGENT COMMS  │
+         *  │  CONFLICTS    │              │
+         *  ├──────────────┤              │
+         *  │  DECISIONS    │              │
+         *  ├──────────────┴──────────────┤
+         *  │        AGENT TEAM            │
+         *  └──────────────────────────────┘
+         */}
         <div
           style={{
             width: `${panelWidth}px`,
-            minWidth: "320px",
-            display: "flex",
-            flexDirection: "column",
+            minWidth: "480px",
+            display: "grid",
+            gridTemplateRows: "1fr 1fr 1fr auto",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0px",
             borderLeft: "1px solid #1a3a1a",
             backgroundColor: "#0d0d0d",
             overflow: "hidden",
           }}
         >
-          {/* Scenario controls — fixed height */}
-          <ScenarioControls />
-
-          {/* Controller decisions — human-on-the-loop approval */}
-          <DecisionPanel />
-
-          {/* Alert summary */}
-          <div
-            style={{
-              padding: "0.5rem",
-              fontSize: "0.7rem",
-              borderBottom: "1px solid #1a3a1a",
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ marginBottom: "0.25rem" }}>
-              A/C: {aircraft.length} | CNFLT: {conflicts.length} | EMG:{" "}
-              {emergencies.length}
-            </div>
-            {/* Emergency list */}
-            {emergencies.length > 0 && (
-              <div style={{ marginBottom: "0.25rem" }}>
-                <div style={{ color: "#ff3333", fontWeight: "bold", fontSize: "0.7rem" }}>
-                  ! EMERGENCIES ({emergencies.length})
-                </div>
-                {emergencies.map((e) => (
-                  <div
-                    key={e.emergency_id}
-                    style={{
-                      border: "1px solid #ff3333",
-                      padding: "0.2rem",
-                      marginBottom: "0.15rem",
-                      fontSize: "0.6rem",
-                    }}
-                  >
-                    <div style={{ fontWeight: "bold" }}>
-                      SQ{e.squawk_code} — {e.callsign}
-                    </div>
-                    <div>Phase: {e.phase.toUpperCase()}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Conflict list */}
-            {conflicts.length > 0 && (
-              <div>
-                <div style={{ color: "#ffaa00", fontWeight: "bold", fontSize: "0.7rem" }}>
-                  * CONFLICTS ({conflicts.length})
-                </div>
-                {conflicts.map((c) => (
-                  <div
-                    key={c.advisory_id}
-                    style={{
-                      border: "1px solid #ffaa00",
-                      padding: "0.2rem",
-                      marginBottom: "0.15rem",
-                      fontSize: "0.6rem",
-                    }}
-                  >
-                    <div>
-                      {c.cpa.aircraft_a_callsign} &lt;=&gt; {c.cpa.aircraft_b_callsign}
-                    </div>
-                    <div>
-                      CPA: {c.cpa.min_distance_nm}nm / {c.cpa.time_to_cpa_seconds}s
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* ── Row 1, Col 1: Scenario controls ── */}
+          <div style={{ overflow: "auto", borderRight: "1px solid #1a3a1a", borderBottom: "1px solid #1a3a1a" }}>
+            <ScenarioControls />
           </div>
 
-          {/* Agent chat panel — fills remaining space */}
-          <div style={{ flex: 1, overflow: "hidden" }}>
+          {/* ── Row 1–3, Col 2: Agent comms (spans all 3 rows) ── */}
+          <div style={{ overflow: "hidden", gridRow: "1 / 4", gridColumn: "2" }}>
             <AgentChatPanel />
           </div>
-          {/* Collaboration flow — agent team graph with framework badges */}
-          <CollaborationFlow />
+
+          {/* ── Row 2, Col 1: Conflicts / Emergencies ── */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              overflow: "auto",
+              borderRight: "1px solid #1a3a1a",
+              borderBottom: "1px solid #1a3a1a",
+            }}
+          >
+            <div
+              style={{
+                padding: "0.4rem 0.5rem",
+                fontSize: "0.7rem",
+                color: "#888",
+              }}
+            >
+              <div style={{ marginBottom: "0.2rem" }}>
+                A/C: {aircraft.length} | CNFLT: {conflicts.length} | EMG:{" "}
+                {emergencies.length}
+              </div>
+              {emergencies.length > 0 && (
+                <div style={{ marginBottom: "0.2rem" }}>
+                  <div style={{ color: "#ff3333", fontWeight: "bold", fontSize: "0.7rem" }}>
+                    ! EMERGENCIES ({emergencies.length})
+                  </div>
+                  {emergencies.map((e) => (
+                    <div
+                      key={e.emergency_id}
+                      style={{
+                        border: "1px solid #ff3333",
+                        padding: "0.15rem",
+                        marginBottom: "0.1rem",
+                        fontSize: "0.6rem",
+                      }}
+                    >
+                      <div style={{ fontWeight: "bold" }}>
+                        SQ{e.squawk_code} — {e.callsign}
+                      </div>
+                      <div>Phase: {e.phase.toUpperCase()}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {conflicts.length > 0 && (
+                <div>
+                  <div style={{ color: "#ffaa00", fontWeight: "bold", fontSize: "0.7rem" }}>
+                    * CONFLICTS ({conflicts.length})
+                  </div>
+                  {conflicts.map((c) => (
+                    <div
+                      key={c.advisory_id}
+                      style={{
+                        border: "1px solid #ffaa00",
+                        padding: "0.15rem",
+                        marginBottom: "0.1rem",
+                        fontSize: "0.6rem",
+                      }}
+                    >
+                      <div>
+                        {c.cpa.aircraft_a_callsign} <=> {c.cpa.aircraft_b_callsign}
+                      </div>
+                      <div>
+                        CPA: {c.cpa.min_distance_nm}nm / {c.cpa.time_to_cpa_seconds}s
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Row 3, Col 1: Controller decisions ── */}
+          <div style={{ overflow: "auto", borderRight: "1px solid #1a3a1a" }}>
+            <DecisionPanel />
+          </div>
+
+          {/* ── Footer: Agent team — spans both columns ── */}
+          <div style={{ gridColumn: "1 / -1", overflow: "hidden", borderTop: "1px solid #1a3a1a" }}>
+            <CollaborationFlow />
+          </div>
         </div>
       </div>
     </div>

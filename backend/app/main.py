@@ -191,7 +191,15 @@ async def lifespan(app: FastAPI):
     set_sim_decision_service(decision_service)
 
     poster = BandPoster(band_client)
-    ingester = AdvisoryIngester(band_client, audit_service)
+    # Promote advisories → decisions only in live mode. In sim mode the
+    # coordinator handler already creates proposals directly, so promoting
+    # here too would double-create them.
+    ingester = AdvisoryIngester(
+        band_client,
+        audit_service,
+        decision_service=decision_service,
+        promote_decisions=not isinstance(band_client, SimulatedBandClient),
+    )
 
     # Legacy REST poller — still useful in live mode to backfill anything
     # the live client's fetch_replies misses. No-op when unconfigured.
