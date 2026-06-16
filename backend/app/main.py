@@ -173,6 +173,7 @@ async def lifespan(app: FastAPI):
         api_key=settings.band_api_key,
         chat_id=settings.band_room_id,
         mention_map=mention_map,
+        owner_user_id=settings.band_owner_user_id,
     )
     _warn_if_live_agents_not_running(settings, mention_map)
 
