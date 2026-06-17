@@ -99,7 +99,7 @@ def resolve_llm_config(agent_model_env_var: str) -> tuple[str, str, str]:
         base_url = os.getenv("AIMLAPI_BASE_URL", "https://api.aimlapi.com/v1")
         api_key = _resolve_aimlapi_key()
         default_model = os.getenv(
-            "AIMLAPI_DEFAULT_MODEL", "deepseek/deepseek-v4-pro"
+            "AIMLAPI_DEFAULT_MODEL", "deepseek/deepseek-v4-flash"
         )
     else:
         valid = " | ".join(SUPPORTED_PROVIDERS)

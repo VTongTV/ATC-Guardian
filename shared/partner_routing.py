@@ -62,66 +62,57 @@ PARTNER_MODEL_ASSIGNMENTS: list[PartnerModelAssignment] = [
     PartnerModelAssignment(
         agent_name="conflict-detector",
         provider="aimlapi",
-        model="deepseek/deepseek-v4-pro",
+        model="deepseek/deepseek-v4-flash",
         rationale=(
             "Conflict detection is the most time-critical loop in ATC "
-            "Guardian (seconds matter). DeepSeek V4 Pro pairs strong "
-            "analytical reasoning with reliable structured JSON output, so "
-            "the Conflict Detector's CPA advisories are well-formed every "
-            "time — essential because the Safety Reviewer and the controller "
-            "both parse them downstream."
+            "Guardian (seconds matter). DeepSeek V4 Flash gives fast "
+            "structured JSON output at 3-4x lower token cost than V4 Pro, "
+            "making it ideal for the high-frequency conflict-check cycle."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="safety-reviewer",
         provider="aimlapi",
-        model="zhipu/glm-5.1",
+        model="deepseek/deepseek-v4-flash",
         rationale=(
             "The adversarial Safety Reviewer returns an explicit "
-            "APPROVE/REJECT/MODIFY verdict that drives the human-on-the-loop "
-            "decision. GLM-5.1's dependable structured output at temperature 0 "
-            "guarantees the verdict field is always one of the three allowed "
-            "values, so the DecisionPanel never receives an unparseable "
-            "recommendation."
+            "APPROVE/REJECT/MODIFY verdict. V4 Flash with low reasoning "
+            "effort gives fast, reliable structured output for this "
+            "bounded classification task."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="weather-analyst",
         provider="aimlapi",
-        model="deepseek/deepseek-v4-pro",
+        model="deepseek/deepseek-v4-flash",
         rationale=(
             "Weather analysis (SIGMET interpretation, deviation routing) "
-            "rewards deep reasoning over unstructured meteorological text. "
-            "DeepSeek V4 Pro is the strongest analytical model on AI/ML API "
-            "for this, turning raw SIGMET polygons into a crisp deviation "
-            "advisory the Coordinator can act on."
+            "benefits from V4 Flash's speed and 3-4x token savings — "
+            "critical when the demo budget is tight."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="coordinator",
         provider="aimlapi",
-        model="moonshot/kimi-k2-6",
+        model="deepseek/deepseek-v4-flash",
         rationale=(
             "The Coordinator's multi-step dispatch spans the whole agent "
-            "roster through @mentions. Moonshot Kimi K2-6's long-context "
-            "instruction-following keeps the full mention/dispatch graph in "
-            "view, so the right specialist is routed each turn."
+            "roster through @mentions. V4 Flash handles this orchestration "
+            "efficiently with low reasoning effort and minimal token usage."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="emergency-response",
         provider="aimlapi",
-        model="zhipu/glm-5.1",
+        model="deepseek/deepseek-v4-flash",
         rationale=(
-            "7700 emergencies are the highest-stakes path in the system. "
-            "GLM-5.1 via AI/ML API gives the most reproducible structured "
-            "output at temperature 0, so the emergency phase classification "
-            "and resolution plan are deterministic and trustworthy under "
-            "pressure."
+            "7700 emergencies need fast response. V4 Flash with "
+            "reasoning_effort=low gives the quickest structured classification "
+            "of emergency phase and resolution plan."
         ),
         prize_category="Best Use of AI/ML API",
     ),
@@ -131,9 +122,8 @@ PARTNER_MODEL_ASSIGNMENTS: list[PartnerModelAssignment] = [
         model="deepseek/deepseek-v4-flash",
         rationale=(
             "Ground Ops performs repeated bounded tool-call lookups "
-            "(runway / ATIS / NOTAM) that favour speed and cost over deep "
-            "reasoning. DeepSeek V4 Flash is the low-latency variant of the "
-            "V4 family, ideal for these frequent, simple structured calls."
+            "(runway / ATIS / NOTAM) that favour speed over deep "
+            "reasoning. V4 Flash is the low-latency, low-cost choice."
         ),
         prize_category="Best Use of AI/ML API",
     ),

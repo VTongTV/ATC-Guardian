@@ -54,6 +54,8 @@ def create_ground_ops_adapter() -> LangGraphAdapter:
         base_url=base_url,
         api_key=api_key,
         temperature=0.1,
+        max_tokens=512,
+        reasoning_effort="low",
     )
 
     return LangGraphAdapter(
