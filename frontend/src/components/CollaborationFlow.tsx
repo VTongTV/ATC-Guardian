@@ -155,11 +155,12 @@ export function CollaborationFlow(): React.ReactElement {
           {Object.entries(frameworks).map(([fw, n]) => (
             <span key={fw} style={{
               padding: '0.05rem 0.3rem',
-              borderRadius: '6px',
+              borderRadius: 'var(--radius-lg)',
               fontSize: '0.5rem',
               backgroundColor: withAlpha(FRAMEWORK_COLORS[fw] ?? '#888', 0.15),
               color: FRAMEWORK_COLORS[fw] ?? '#888',
               border: `1px solid ${withAlpha(FRAMEWORK_COLORS[fw] ?? '#888', 0.3)}`,
+              transition: 'border-color var(--transition-fast)',
             }}>
               {fw} ×{n}
             </span>
@@ -189,11 +190,12 @@ export function CollaborationFlow(): React.ReactElement {
                 border: `1px solid ${isActive ? node.colour : 'var(--border-mid)'}`,
                 borderLeft: `3px solid ${node.colour}`,
                 backgroundColor: isActive ? 'var(--bg-surface)' : 'var(--bg-mid)',
-                borderRadius: '4px',
+                borderRadius: 'var(--radius-lg)',
                 padding: '0.4rem 0.5rem 0.35rem',
                 fontSize: '0.6rem',
                 position: 'relative',
                 overflow: 'visible',
+                transition: 'border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast)',
                 ["--flash-colour" as string]: node.colour,
               } as React.CSSProperties}
             >
@@ -223,10 +225,11 @@ export function CollaborationFlow(): React.ReactElement {
                     fontSize: '0.55rem',
                     marginLeft: 'auto',
                     padding: '0 4px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-lg)',
                     backgroundColor: 'rgba(51,255,51,0.1)',
                     border: '1px solid rgba(51,255,51,0.2)',
                     whiteSpace: 'nowrap',
+                    transition: 'border-color var(--transition-fast)',
                   }}>
                     {activity}
                   </span>
@@ -236,7 +239,7 @@ export function CollaborationFlow(): React.ReactElement {
                 <span style={{
                   display: 'inline-block',
                   padding: '0.08rem 0.35rem',
-                  borderRadius: '8px',
+                  borderRadius: 'var(--radius-lg)',
                   fontSize: '0.5rem',
                   fontWeight: 500,
                   backgroundColor: withAlpha(fwColour, 0.12),
@@ -244,6 +247,7 @@ export function CollaborationFlow(): React.ReactElement {
                   border: `1px solid ${withAlpha(fwColour, 0.3)}`,
                   letterSpacing: '0.02em',
                   marginTop: '0.15rem',
+                  transition: 'border-color var(--transition-fast)',
                 }}>
                   {node.framework}
                 </span>

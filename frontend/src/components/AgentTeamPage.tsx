@@ -153,12 +153,13 @@ export function AgentTeamPage(): React.ReactElement {
           {Object.entries(frameworks).map(([fw, n]) => (
             <span key={fw} style={{
               padding: "var(--sp-1) var(--sp-3)",
-              borderRadius: "6px",
+              borderRadius: "var(--radius-lg)",
               fontSize: "var(--fs-meta)",
               backgroundColor: withAlpha(FRAMEWORK_COLORS[fw] ?? "#888", 0.12),
               color: FRAMEWORK_COLORS[fw] ?? "#888",
               border: `1px solid ${withAlpha(FRAMEWORK_COLORS[fw] ?? "#888", 0.3)}`,
               fontWeight: 500,
+              transition: "border-color var(--transition-fast), box-shadow var(--transition-fast)",
             }}>
               {fw} ×{n}
             </span>
@@ -202,11 +203,12 @@ export function AgentTeamPage(): React.ReactElement {
                   justifyContent: "center",
                   width: "36px",
                   height: "36px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-lg)",
                   backgroundColor: withAlpha(node.colour, 0.15),
                   border: `1px solid ${withAlpha(node.colour, 0.3)}`,
                   fontSize: "1.1rem",
                   flexShrink: 0,
+                  transition: "background-color var(--transition-fast), border-color var(--transition-fast)",
                 }}>
                   {icon}
                 </span>
@@ -251,13 +253,14 @@ export function AgentTeamPage(): React.ReactElement {
                 <span style={{
                   display: "inline-block",
                   padding: "2px var(--sp-2)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-lg)",
                   fontSize: "var(--fs-micro)",
                   fontWeight: 600,
                   backgroundColor: withAlpha(fwColour, 0.12),
                   color: fwColour,
                   border: `1px solid ${withAlpha(fwColour, 0.3)}`,
                   letterSpacing: "0.02em",
+                  transition: "border-color var(--transition-fast)",
                 }}>
                   {node.framework}
                 </span>

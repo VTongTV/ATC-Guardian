@@ -116,7 +116,7 @@ export function DecisionPanel(): React.ReactElement {
         <span className="atc-panel-title">CONTROLLER DECISIONS</span>
         <span style={{
           padding: '0.15rem 0.5rem',
-          borderRadius: '10px',
+          borderRadius: 'var(--radius-xl)',
           fontSize: 'var(--fs-micro)',
           fontWeight: 700,
           fontFamily: 'var(--font-mono)',
@@ -124,6 +124,8 @@ export function DecisionPanel(): React.ReactElement {
           color: pending.length > 0 ? '#ffaa00' : 'var(--color-nominal)',
           border: pending.length > 0 ? '1px solid rgba(255, 170, 0, 0.35)' : '1px solid rgba(51, 255, 51, 0.2)',
           letterSpacing: '0.04em',
+          boxShadow: pending.length > 0 ? '0 0 8px rgba(255, 170, 0, 0.15)' : 'none',
+          transition: 'all var(--transition-fast)',
         }}>
           {pending.length} PENDING
         </span>
@@ -143,16 +145,18 @@ export function DecisionPanel(): React.ReactElement {
             gap: '0.5rem',
           }}>
             <div style={{
-              width: '36px',
-              height: '36px',
+              width: '40px',
+              height: '40px',
               borderRadius: '50%',
               border: '2px solid var(--border-bright)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1rem',
+              fontSize: '1.1rem',
               color: 'var(--color-nominal)',
-              opacity: 0.5,
+              opacity: 0.4,
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'border-color var(--transition-fast), opacity var(--transition-fast)',
             }}>✓</div>
             <div style={{
               fontSize: 'var(--fs-body)',
@@ -183,18 +187,20 @@ export function DecisionPanel(): React.ReactElement {
               key={d.decision_id}
               style={{
                 borderLeft: `3px solid ${accent}`,
-                borderRadius: '0 6px 6px 0',
+                borderRadius: '0 var(--radius-lg) var(--radius-lg) 0',
                 backgroundColor: withAlpha(accent, 0.04),
-                padding: "0.5rem",
+                padding: "0.55rem",
                 marginBottom: "0.5rem",
                 fontSize: "0.62rem",
                 fontFamily: 'var(--font-mono)',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'box-shadow var(--transition-fast), background-color var(--transition-fast)',
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: 'center', marginBottom: "0.3rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: 'center', marginBottom: "0.35rem" }}>
                 <span style={{
-                  padding: '0.1rem 0.4rem',
-                  borderRadius: '4px',
+                  padding: '0.1rem 0.45rem',
+                  borderRadius: 'var(--radius-md)',
                   fontSize: '0.5rem',
                   fontWeight: 700,
                   backgroundColor: withAlpha(accent, 0.15),
@@ -208,16 +214,16 @@ export function DecisionPanel(): React.ReactElement {
               </div>
               <div style={{
                 color: 'var(--text-primary)',
-                marginBottom: "0.35rem",
-                lineHeight: 1.5,
+                marginBottom: "0.4rem",
+                lineHeight: 1.55,
                 fontWeight: 500,
               }}>{d.summary}</div>
               <div style={{
                 color: 'var(--text-secondary)',
-                marginBottom: "0.2rem",
-                padding: "0.2rem 0.3rem",
+                marginBottom: "0.25rem",
+                padding: "0.25rem 0.4rem",
                 backgroundColor: "rgba(68, 136, 255, 0.06)",
-                borderRadius: "3px",
+                borderRadius: "var(--radius-md)",
                 borderLeft: "2px solid var(--accent-blue)",
               }}>
                 <span style={{ color: 'var(--accent-blue)', fontWeight: 600, fontSize: 'var(--fs-micro)' }}>AGENT:</span>{" "}
@@ -225,10 +231,10 @@ export function DecisionPanel(): React.ReactElement {
               </div>
               <div style={{
                 color: 'var(--text-secondary)',
-                marginBottom: "0.35rem",
-                padding: "0.2rem 0.3rem",
+                marginBottom: "0.4rem",
+                padding: "0.25rem 0.4rem",
                 backgroundColor: "rgba(51, 255, 51, 0.04)",
-                borderRadius: "3px",
+                borderRadius: "var(--radius-md)",
                 borderLeft: "2px solid var(--color-nominal)",
               }}>
                 <span style={{ color: 'var(--color-nominal)', fontWeight: 600, fontSize: 'var(--fs-micro)' }}>REVIEWER:</span>{" "}
@@ -239,7 +245,7 @@ export function DecisionPanel(): React.ReactElement {
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "APPROVED" })}
-                  style={btnStyle("#0a1a0a", "#33ff33", "rgba(51, 255, 51, 0.2)")}
+                  style={btnStyle("#0a1a0a", "#33ff33")}
                 >
                   {isBusy ? "..." : "APPROVE"}
                 </button>
@@ -247,7 +253,7 @@ export function DecisionPanel(): React.ReactElement {
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "MODIFIED" })}
-                  style={btnStyle("#1a1a0a", "#ffaa00", "rgba(255, 170, 0, 0.2)")}
+                  style={btnStyle("#1a1a0a", "#ffaa00")}
                 >
                   {isBusy ? "..." : "MODIFY"}
                 </button>
@@ -255,7 +261,7 @@ export function DecisionPanel(): React.ReactElement {
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "REJECTED" })}
-                  style={btnStyle("#1a0a0a", "#ff3333", "rgba(255, 51, 51, 0.2)")}
+                  style={btnStyle("#1a0a0a", "#ff3333")}
                 >
                   {isBusy ? "..." : "REJECT"}
                 </button>
@@ -269,19 +275,20 @@ export function DecisionPanel(): React.ReactElement {
 }
 
 /** Build a button style with the given bg/text colours. */
-function btnStyle(bg: string, color: string, hoverBg: string): React.CSSProperties {
+function btnStyle(bg: string, color: string): React.CSSProperties {
   return {
     flex: 1,
     backgroundColor: bg,
     color,
     border: `1px solid ${color}`,
-    borderRadius: '4px',
-    padding: "0.3rem",
+    borderRadius: 'var(--radius-md)',
+    padding: "0.3rem 0.4rem",
     fontSize: "0.58rem",
     fontFamily: "var(--font-mono)",
     fontWeight: 700,
     cursor: "pointer",
     letterSpacing: "0.06em",
-    transition: 'all 0.15s ease',
+    transition: 'all var(--transition-fast)',
+    boxShadow: 'var(--shadow-sm)',
   };
 }

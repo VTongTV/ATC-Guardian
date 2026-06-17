@@ -84,17 +84,19 @@ export function AuditTimeline(): React.ReactElement {
     display: "flex",
     flexDirection: "column",
     height: "100%",
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "var(--bg-deep)",
     overflow: "hidden",
   };
 
   const headerStyle: React.CSSProperties = {
     fontSize: "0.7rem",
-    color: "#33ff33",
+    color: "var(--color-nominal)",
     padding: "0.3rem 0.5rem",
-    borderBottom: "1px solid #1a3a1a",
+    borderBottom: "1px solid var(--border-mid)",
     flexShrink: 0,
     letterSpacing: "0.05em",
+    background: "linear-gradient(180deg, var(--bg-overlay) 0%, var(--bg-mid) 100%)",
+    borderRadius: "var(--radius-lg) var(--radius-lg) 0 0",
   };
 
   const listStyle: React.CSSProperties = {
@@ -119,14 +121,15 @@ export function AuditTimeline(): React.ReactElement {
               key={evt.id}
               style={{
                 fontSize: "0.65rem",
-                fontFamily: "monospace",
+                fontFamily: "var(--font-mono)",
                 padding: "0.15rem 0",
-                borderBottom: "1px solid #111",
+                borderBottom: "1px solid var(--border-dim)",
                 lineHeight: "1.3",
+                transition: "background-color var(--transition-fast)",
               }}
             >
               {/* Timestamp */}
-              <span style={{ color: "#555" }}>{formatTime(evt.timestamp)} </span>
+              <span style={{ color: "var(--text-muted)" }}>{formatTime(evt.timestamp)} </span>
               {/* Agent label */}
               <span style={{ color: style.color, fontWeight: "bold" }}>
                 [{agentLabel}]
@@ -143,10 +146,10 @@ export function AuditTimeline(): React.ReactElement {
               </span>
               {/* Target agent if present */}
               {targetLabel && (
-                <span style={{ color: "#666" }}>{targetLabel} </span>
+                <span style={{ color: "var(--text-muted)" }}>{targetLabel} </span>
               )}
               {/* Content */}
-              <span style={{ color: "#ccc" }}>{evt.content}</span>
+              <span style={{ color: "var(--text-primary)" }}>{evt.content}</span>
             </div>
           );
         })}

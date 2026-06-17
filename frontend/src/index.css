@@ -60,6 +60,25 @@
   --sp-5: 20px;
   --sp-6: 24px;
   --sp-8: 32px;
+
+  /* Border radius — softened for modern feel */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Shadows — enhanced with ambient light for depth */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-glow-sm: 0 0 6px rgba(51, 255, 51, 0.08);
+  --shadow-glow-md: 0 0 12px rgba(51, 255, 51, 0.12);
+
+  /* Transitions — consistent timing */
+  --transition-fast: 0.15s ease;
+  --transition-med: 0.25s ease;
+  --transition-slow: 0.4s ease;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────── */
@@ -89,10 +108,12 @@ html, body, #root {
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-deep);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-bright);
-  border-radius: 3px;
+  border-radius: 6px;
+  transition: background var(--transition-fast);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
@@ -107,8 +128,8 @@ html, body, #root {
 
 /* Live data pulsing dot */
 @keyframes pulse-live {
-  0%, 100% { opacity: 1; box-shadow: 0 0 3px var(--color-nominal); }
-  50%      { opacity: 0.4; box-shadow: 0 0 8px var(--color-nominal); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--color-nominal); }
+  50%      { opacity: 0.4; box-shadow: 0 0 10px var(--color-nominal); }
 }
 
 /* Phosphor glow on panel titles */
@@ -169,7 +190,9 @@ html, body, #root {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--bg-mid);
+  background: linear-gradient(180deg, var(--bg-overlay) 0%, var(--bg-mid) 100%);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  backdrop-filter: blur(8px);
 }
 
 .atc-meta {
@@ -212,37 +235,47 @@ html, body, #root {
 }
 
 .atc-agent-card-extended {
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   padding: var(--sp-5);
   position: relative;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color var(--transition-med), box-shadow var(--transition-med), transform var(--transition-med), background-color var(--transition-med);
 }
 
 .atc-agent-card-extended:hover {
-  box-shadow: 0 0 12px rgba(var(--card-glow-rgb, 51,255,51), 0.15);
+  box-shadow: 0 0 20px rgba(var(--card-glow-rgb, 51,255,51), 0.2), var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 /* ─── Focus States ───────────────────────────────────────────────── */
 
 select:focus-visible,
 button:focus-visible,
-input:focus-visible {
-  outline: 1.5px solid var(--color-nominal);
-  outline-offset: 2px;
-  box-shadow: 0 0 6px rgba(51, 255, 51, 0.3);
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-nominal);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(51, 255, 51, 0.1), var(--shadow-sm);
+}
+
+select,
+input,
+textarea {
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
 }
 
 button {
-  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast), transform 0.1s ease, filter var(--transition-fast), border-color var(--transition-fast);
+  border-radius: var(--radius-md);
 }
 button:hover:not(:disabled) {
-  filter: brightness(1.2);
+  filter: brightness(1.15);
 }
 button:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -251,9 +284,9 @@ button:disabled {
 /* Zoom controls */
 .leaflet-control-zoom {
   border: 1px solid var(--border-mid) !important;
-  border-radius: 4px !important;
+  border-radius: var(--radius-lg) !important;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: var(--shadow-lg) !important;
 }
 .leaflet-control-zoom a {
   background-color: var(--bg-surface) !important;
@@ -264,7 +297,7 @@ button:disabled {
   line-height: 30px !important;
   font-size: 16px !important;
   font-family: var(--font-mono) !important;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 .leaflet-control-zoom a:hover {
   background-color: var(--bg-raised) !important;
@@ -276,10 +309,11 @@ button:disabled {
 
 /* Attribution */
 .leaflet-control-attribution {
-  background: rgba(5, 8, 5, 0.75) !important;
+  background: rgba(5, 8, 5, 0.8) !important;
   color: var(--text-muted) !important;
   font-size: 9px !important;
   font-family: var(--font-mono) !important;
+  border-radius: var(--radius-sm) 0 0 0 !important;
 }
 .leaflet-control-attribution a {
   color: var(--text-dim) !important;
@@ -287,14 +321,15 @@ button:disabled {
 
 /* Tooltips */
 .leaflet-tooltip {
-  background: rgba(10, 14, 10, 0.92) !important;
+  background: rgba(10, 14, 10, 0.94) !important;
   border: 1px solid var(--border-mid) !important;
-  border-radius: 3px !important;
+  border-radius: var(--radius-lg) !important;
   color: var(--text-body) !important;
   font-family: var(--font-mono) !important;
   font-size: 11px !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: var(--shadow-lg) !important;
   padding: 0 !important;
+  backdrop-filter: blur(8px);
 }
 .leaflet-tooltip-top::before,
 .leaflet-tooltip-bottom::before,
@@ -325,6 +360,7 @@ button:disabled {
     max-height: 50vh;
     border-left: none !important;
     border-top: 1px solid var(--border-mid);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
   .atc-resize-handle {
     display: none !important;
@@ -372,4 +408,10 @@ button:disabled {
   left: 0;
   color: var(--color-nominal);
   font-weight: 700;
+}
+
+/* ─── Selection highlight ─────────────────────────────────────────── */
+::selection {
+  background: rgba(51, 255, 51, 0.2);
+  color: var(--text-primary);
 }

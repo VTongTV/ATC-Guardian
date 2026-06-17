@@ -180,8 +180,8 @@ export function ScenarioControls(): React.ReactElement {
             border: "1px solid var(--border-bright)",
             fontFamily: "var(--font-mono)",
             fontSize: "var(--fs-body)",
-            borderRadius: "4px",
-            padding: "0.4rem 0.5rem",
+            borderRadius: "var(--radius-lg)",
+            padding: "0.45rem 0.6rem",
             width: "100%",
             outline: "none",
             cursor: "pointer",
@@ -192,18 +192,19 @@ export function ScenarioControls(): React.ReactElement {
             backgroundPosition: "right 0.5rem center",
             backgroundSize: "10px 6px",
             paddingRight: "1.6rem",
-            transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+            transition: "border-color var(--transition-fast), box-shadow var(--transition-fast)",
+            boxShadow: "var(--shadow-sm)",
           }}
           value={activeScenarioId}
           onChange={handleScenarioChange}
           disabled={switching}
           onFocus={(e) => {
             e.target.style.borderColor = "var(--color-nominal)";
-            e.target.style.boxShadow = "0 0 8px rgba(51, 255, 51, 0.15)";
+            e.target.style.boxShadow = "0 0 0 2px rgba(51, 255, 51, 0.12), var(--shadow-sm)";
           }}
           onBlur={(e) => {
             e.target.style.borderColor = "var(--border-bright)";
-            e.target.style.boxShadow = "none";
+            e.target.style.boxShadow = "var(--shadow-sm)";
           }}
         >
           {SCENARIOS.map((sc) => (
@@ -223,8 +224,8 @@ export function ScenarioControls(): React.ReactElement {
         paddingLeft: "0.5rem",
         fontFamily: "var(--font-mono)",
         backgroundColor: "rgba(51, 255, 51, 0.03)",
-        padding: "0.4rem 0.5rem",
-        borderRadius: "0 4px 4px 0",
+        padding: "0.4rem 0.6rem",
+        borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
       }}>
         <span style={{ color: "var(--color-nominal)", fontWeight: 600 }}>{activeScenario?.id}</span>
         <span style={{ color: "var(--text-dim)", margin: "0 0.3rem" }}>—</span>
@@ -238,29 +239,31 @@ export function ScenarioControls(): React.ReactElement {
         style={{
           backgroundColor: demoPlaying ? "rgba(255, 51, 51, 0.12)" : "rgba(51, 255, 51, 0.08)",
           color: demoPlaying ? "var(--color-critical)" : "var(--color-nominal)",
-          border: `1px solid ${demoPlaying ? "var(--color-critical)" : "var(--color-nominal)"}`,
+          border: `1px solid ${demoPlaying ? "rgba(255, 51, 51, 0.4)" : "rgba(51, 255, 51, 0.35)"}`,
           fontFamily: "var(--font-mono)",
           fontSize: "var(--fs-body)",
           fontWeight: 600,
-          borderRadius: "4px",
-          padding: "0.45rem 0.6rem",
+          borderRadius: "var(--radius-lg)",
+          padding: "0.5rem 0.7rem",
           cursor: "pointer",
           letterSpacing: "0.08em",
-          transition: "all 0.2s ease",
+          transition: "all var(--transition-fast)",
           boxShadow: demoPlaying
-            ? "0 0 12px rgba(255, 51, 51, 0.2), inset 0 0 20px rgba(255, 51, 51, 0.05)"
-            : "0 0 12px rgba(51, 255, 51, 0.15), inset 0 0 20px rgba(51, 255, 51, 0.03)",
+            ? "0 2px 8px rgba(255, 51, 51, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.03)"
+            : "0 2px 8px rgba(51, 255, 51, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
         }}
         onMouseEnter={(e) => {
           if (!demoPlaying) {
             e.currentTarget.style.backgroundColor = "rgba(51, 255, 51, 0.14)";
-            e.currentTarget.style.boxShadow = "0 0 16px rgba(51, 255, 51, 0.25), inset 0 0 24px rgba(51, 255, 51, 0.06)";
+            e.currentTarget.style.boxShadow = "0 4px 12px rgba(51, 255, 51, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04)";
+            e.currentTarget.style.transform = "translateY(-1px)";
           }
         }}
         onMouseLeave={(e) => {
           if (!demoPlaying) {
             e.currentTarget.style.backgroundColor = "rgba(51, 255, 51, 0.08)";
-            e.currentTarget.style.boxShadow = "0 0 12px rgba(51, 255, 51, 0.15), inset 0 0 20px rgba(51, 255, 51, 0.03)";
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(51, 255, 51, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.03)";
+            e.currentTarget.style.transform = "translateY(0)";
           }
         }}
       >
@@ -272,10 +275,10 @@ export function ScenarioControls(): React.ReactElement {
         <div style={{
           fontSize: "var(--fs-meta)",
           color: "var(--color-warning)",
-          padding: "0.4rem 0.5rem",
+          padding: "0.4rem 0.6rem",
           borderLeft: "2px solid var(--color-warning)",
           backgroundColor: "rgba(255, 170, 0, 0.06)",
-          borderRadius: "0 4px 4px 0",
+          borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
           fontFamily: "var(--font-mono)",
           lineHeight: 1.5,
         }}>
@@ -294,10 +297,12 @@ export function ScenarioControls(): React.ReactElement {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          padding: "0.35rem 0.4rem",
+          padding: "0.4rem 0.5rem",
           backgroundColor: "var(--bg-surface)",
           border: "1px solid var(--border-dim)",
-          borderRadius: "4px",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "var(--shadow-sm)",
+          transition: "border-color var(--transition-fast), box-shadow var(--transition-fast)",
         }}>
           <span style={{ color: "var(--text-dim)", fontSize: "var(--fs-micro)", letterSpacing: "0.06em" }}>ELAPSED</span>
           <span style={{ color: "var(--color-nominal)", fontWeight: 700, fontSize: "var(--fs-body)" }}>
@@ -309,10 +314,12 @@ export function ScenarioControls(): React.ReactElement {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          padding: "0.35rem 0.4rem",
+          padding: "0.4rem 0.5rem",
           backgroundColor: "var(--bg-surface)",
           border: "1px solid var(--border-dim)",
-          borderRadius: "4px",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "var(--shadow-sm)",
+          transition: "border-color var(--transition-fast), box-shadow var(--transition-fast)",
         }}>
           <span style={{ color: "var(--text-dim)", fontSize: "var(--fs-micro)", letterSpacing: "0.06em" }}>AIRCRAFT</span>
           <span style={{ color: "var(--color-nominal)", fontWeight: 700, fontSize: "var(--fs-body)" }}>

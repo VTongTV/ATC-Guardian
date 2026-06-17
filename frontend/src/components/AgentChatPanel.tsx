@@ -268,7 +268,7 @@ function renderMentionChips(
             alignItems: "center",
             gap: "2px",
             padding: "0 5px",
-            borderRadius: "3px",
+            borderRadius: "var(--radius-sm)",
             fontSize: "0.58rem",
             fontWeight: 600,
             backgroundColor: withAlpha(color, 0.15),
@@ -277,6 +277,7 @@ function renderMentionChips(
             whiteSpace: "nowrap",
             lineHeight: "1.4",
             verticalAlign: "middle",
+            transition: "background-color var(--transition-fast)",
           }}
         >
           <span style={{ fontSize: "0.55rem" }}>{agentIcon(handle)}</span>
@@ -292,7 +293,7 @@ function renderMentionChips(
             display: "inline-flex",
             alignItems: "center",
             padding: "0 5px",
-            borderRadius: "3px",
+            borderRadius: "var(--radius-sm)",
             fontSize: "0.58rem",
             fontWeight: 500,
             backgroundColor: "rgba(136,136,136,0.15)",
@@ -382,7 +383,7 @@ function markdownComponents(accent: string, uuidMap: Map<string, string>) {
           backgroundColor: withAlpha(accent, 0.12),
           color: accent,
           padding: "0.1em 0.3em",
-          borderRadius: "3px",
+          borderRadius: "var(--radius-sm)",
           fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)",
           fontSize: "0.95em",
           border: `1px solid ${withAlpha(accent, 0.2)}`,
@@ -537,7 +538,7 @@ export function AgentChatPanel(): React.ReactElement {
             onClick={() => setFilterAgent("all")}
             style={{
               padding: "1px 6px",
-              borderRadius: "3px",
+              borderRadius: "var(--radius-sm)",
               border: `1px solid ${filterAgent === "all" ? "var(--color-nominal)" : "var(--border-mid)"}`,
               backgroundColor: filterAgent === "all" ? "rgba(51,255,51,0.12)" : "transparent",
               color: filterAgent === "all" ? "var(--color-nominal)" : "var(--text-dim)",
@@ -545,6 +546,7 @@ export function AgentChatPanel(): React.ReactElement {
               fontFamily: "var(--font-mono)",
               cursor: "pointer",
               lineHeight: "1.4",
+              transition: "all var(--transition-fast)",
             }}
           >
             ALL
@@ -558,7 +560,7 @@ export function AgentChatPanel(): React.ReactElement {
                 onClick={() => setFilterAgent(isActive ? "all" : name)}
                 style={{
                   padding: "1px 6px",
-                  borderRadius: "3px",
+                  borderRadius: "var(--radius-sm)",
                   border: `1px solid ${isActive ? color : "var(--border-mid)"}`,
                   backgroundColor: isActive ? withAlpha(color, 0.15) : "transparent",
                   color: isActive ? color : "var(--text-dim)",
@@ -569,6 +571,7 @@ export function AgentChatPanel(): React.ReactElement {
                   alignItems: "center",
                   gap: "2px",
                   lineHeight: "1.4",
+                  transition: "all var(--transition-fast)",
                 }}
               >
                 <span style={{ fontSize: "0.5rem" }}>{agentIcon(name)}</span>
@@ -622,14 +625,16 @@ export function AgentChatPanel(): React.ReactElement {
               key={evt.id}
               style={{
                 borderLeft: `3px solid ${typeColor}`,
-                borderRight: `1px solid ${withAlpha(fromColor, 0.15)}`,
-                borderTop: `1px solid ${withAlpha(fromColor, 0.1)}`,
-                borderBottom: `1px solid ${withAlpha(fromColor, 0.1)}`,
+                borderRight: `1px solid ${withAlpha(fromColor, 0.12)}`,
+                borderTop: `1px solid ${withAlpha(fromColor, 0.08)}`,
+                borderBottom: `1px solid ${withAlpha(fromColor, 0.08)}`,
                 backgroundColor: withAlpha(fromColor, 0.04),
-                borderRadius: "0 6px 6px 0",
+                borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
                 overflow: "hidden",
                 minHeight: "48px",
                 flexShrink: 0,
+                boxShadow: "var(--shadow-sm)",
+                transition: "box-shadow var(--transition-fast), background-color var(--transition-fast)",
               }}
             >
               {/* Sender header row */}
@@ -639,7 +644,7 @@ export function AgentChatPanel(): React.ReactElement {
                 gap: "6px",
                 padding: "5px 8px",
                 backgroundColor: withAlpha(fromColor, 0.08),
-                borderBottom: `1px solid ${withAlpha(fromColor, 0.12)}`,
+                borderBottom: `1px solid ${withAlpha(fromColor, 0.1)}`,
               }}>
                 {/* Avatar icon */}
                 <span style={{
@@ -648,11 +653,12 @@ export function AgentChatPanel(): React.ReactElement {
                   justifyContent: "center",
                   width: "22px",
                   height: "22px",
-                  borderRadius: "4px",
+                  borderRadius: "var(--radius-md)",
                   backgroundColor: withAlpha(fromColor, 0.2),
-                  border: `1px solid ${withAlpha(fromColor, 0.35)}`,
+                  border: `1px solid ${withAlpha(fromColor, 0.3)}`,
                   fontSize: "0.7rem",
                   flexShrink: 0,
+                  transition: "background-color var(--transition-fast)",
                 }}>
                   {agentIcon(fromHandle)}
                 </span>
@@ -671,7 +677,7 @@ export function AgentChatPanel(): React.ReactElement {
                   fontSize: "0.5rem",
                   color: typeColor,
                   padding: "1px 5px",
-                  borderRadius: "3px",
+                  borderRadius: "var(--radius-sm)",
                   backgroundColor: withAlpha(typeColor, 0.12),
                   border: `1px solid ${withAlpha(typeColor, 0.3)}`,
                   letterSpacing: "0.03em",
@@ -703,7 +709,7 @@ export function AgentChatPanel(): React.ReactElement {
                     <div key={i} style={{
                       display: 'inline-flex',
                       fontSize: '0.55rem',
-                      borderRadius: '4px',
+                      borderRadius: 'var(--radius-sm)',
                       border: `1px solid ${withAlpha(fromColor, 0.3)}`,
                       overflow: 'hidden',
                     }}>
@@ -766,15 +772,16 @@ export function AgentChatPanel(): React.ReactElement {
             padding: "var(--sp-1) var(--sp-4)",
             backgroundColor: "var(--bg-raised)",
             border: "1px solid var(--color-nominal)",
-            borderRadius: "4px",
+            borderRadius: "var(--radius-lg)",
             color: "var(--color-nominal)",
             fontSize: "var(--fs-meta)",
             fontFamily: "var(--font-mono)",
             cursor: "pointer",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.4), 0 0 8px rgba(51, 255, 51, 0.1)",
             animation: "fade-in-up 0.2s ease-out",
             zIndex: 10,
             letterSpacing: "0.04em",
+            transition: "box-shadow var(--transition-fast), background-color var(--transition-fast)",
           }}
         >
           ↓ JUMP TO LATEST

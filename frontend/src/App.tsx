@@ -98,6 +98,9 @@ function App(): React.ReactElement {
             backgroundColor: "var(--bg-mid)",
             borderBottom: "1px solid var(--border-mid)",
             flexShrink: 0,
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+            position: "relative",
+            zIndex: 10,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
@@ -119,12 +122,13 @@ function App(): React.ReactElement {
                 padding: "var(--sp-1) var(--sp-3)",
                 backgroundColor: "var(--bg-surface)",
                 border: "1px solid var(--border-mid)",
-                borderRadius: "4px",
+                borderRadius: "var(--radius-md)",
                 color: "var(--color-nominal)",
                 fontSize: "var(--fs-meta)",
                 fontFamily: "var(--font-mono)",
                 cursor: "pointer",
                 letterSpacing: "0.04em",
+                boxShadow: "var(--shadow-sm)",
               }}
             >
               <span style={{ fontSize: "0.7rem" }}>←</span>
@@ -156,6 +160,7 @@ function App(): React.ReactElement {
             fontFamily: "var(--font-mono)",
             animation: "toast-slide-in 0.3s ease-out",
             flexShrink: 0,
+            borderBottom: "1px solid rgba(255,51,51,0.15)",
           }}
         >
           <span style={{ flex: 1 }}>⚠ {error}</span>
@@ -188,6 +193,9 @@ function App(): React.ReactElement {
           backgroundColor: "var(--bg-mid)",
           borderBottom: "1px solid var(--border-mid)",
           flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+          position: "relative",
+          zIndex: 10,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
@@ -242,12 +250,13 @@ function App(): React.ReactElement {
               padding: "var(--sp-1) var(--sp-3)",
               backgroundColor: "var(--bg-surface)",
               border: "1px solid var(--border-mid)",
-              borderRadius: "4px",
+              borderRadius: "var(--radius-md)",
               color: "var(--color-nominal)",
               fontSize: "var(--fs-meta)",
               fontFamily: "var(--font-mono)",
               cursor: "pointer",
               letterSpacing: "0.04em",
+              boxShadow: "var(--shadow-sm)",
             }}
           >
             AGENT TEAM
@@ -304,6 +313,7 @@ function App(): React.ReactElement {
             borderLeft: "1px solid var(--border-mid)",
             backgroundColor: "var(--bg-mid)",
             overflow: "hidden",
+            boxShadow: "-2px 0 16px rgba(0, 0, 0, 0.35)",
           }}
         >
           {/* ── Row 1, Col 1: Scenario controls ── */}
@@ -344,7 +354,7 @@ function App(): React.ReactElement {
               }}>
                 <div style={{
                   padding: 'var(--sp-2) var(--sp-3)',
-                  borderRadius: '4px',
+                  borderRadius: 'var(--radius-lg)',
                   border: '1px solid rgba(51, 255, 51, 0.25)',
                   backgroundColor: 'rgba(51, 255, 51, 0.06)',
                   fontSize: 'var(--fs-meta)',
@@ -355,13 +365,15 @@ function App(): React.ReactElement {
                   alignItems: 'center',
                   gap: '0.15rem',
                   minWidth: '50px',
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
                 }}>
                   <span style={{ fontSize: 'var(--fs-micro)', opacity: 0.6, letterSpacing: '0.08em' }}>A/C</span>
                   <span style={{ fontWeight: 700, fontSize: 'var(--fs-body)' }}>{aircraft.length}</span>
                 </div>
                 <div style={{
                   padding: 'var(--sp-2) var(--sp-3)',
-                  borderRadius: '4px',
+                  borderRadius: 'var(--radius-lg)',
                   border: conflicts.length > 0 ? '1px solid rgba(255, 170, 0, 0.4)' : '1px solid rgba(255, 170, 0, 0.2)',
                   backgroundColor: conflicts.length > 0 ? 'rgba(255,170,0,0.1)' : 'transparent',
                   fontSize: 'var(--fs-meta)',
@@ -372,14 +384,15 @@ function App(): React.ReactElement {
                   alignItems: 'center',
                   gap: '0.15rem',
                   minWidth: '50px',
-                  boxShadow: conflicts.length > 0 ? '0 0 8px rgba(255, 170, 0, 0.15)' : 'none',
+                  boxShadow: conflicts.length > 0 ? '0 0 10px rgba(255, 170, 0, 0.15)' : 'var(--shadow-sm)',
+                  transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast)',
                 }}>
                   <span style={{ fontSize: 'var(--fs-micro)', opacity: 0.6, letterSpacing: '0.08em' }}>CNFLT</span>
                   <span style={{ fontWeight: 700, fontSize: 'var(--fs-body)' }}>{conflicts.length}</span>
                 </div>
                 <div style={{
                   padding: 'var(--sp-2) var(--sp-3)',
-                  borderRadius: '4px',
+                  borderRadius: 'var(--radius-lg)',
                   border: emergencies.length > 0 ? '1px solid rgba(255, 51, 51, 0.4)' : '1px solid rgba(255, 51, 51, 0.2)',
                   backgroundColor: emergencies.length > 0 ? 'rgba(255,51,51,0.12)' : 'transparent',
                   fontSize: 'var(--fs-meta)',
@@ -390,7 +403,8 @@ function App(): React.ReactElement {
                   alignItems: 'center',
                   gap: '0.15rem',
                   minWidth: '50px',
-                  boxShadow: emergencies.length > 0 ? '0 0 8px rgba(255, 51, 51, 0.2)' : 'none',
+                  boxShadow: emergencies.length > 0 ? '0 0 10px rgba(255, 51, 51, 0.2)' : 'var(--shadow-sm)',
+                  transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast)',
                 }}>
                   <span style={{ fontSize: 'var(--fs-micro)', opacity: 0.6, letterSpacing: '0.08em' }}>EMG</span>
                   <span style={{ fontWeight: 700, fontSize: 'var(--fs-body)' }}>{emergencies.length}</span>
@@ -414,7 +428,7 @@ function App(): React.ReactElement {
                       justifyContent: "center",
                       width: "16px",
                       height: "16px",
-                      borderRadius: "3px",
+                      borderRadius: "var(--radius-sm)",
                       backgroundColor: "rgba(255, 51, 51, 0.2)",
                       fontSize: "0.6rem",
                     }}>⚠</span>
@@ -429,7 +443,9 @@ function App(): React.ReactElement {
                         padding: "var(--sp-2) var(--sp-3)",
                         marginBottom: "var(--sp-2)",
                         fontSize: "var(--fs-meta)",
-                        borderRadius: "0 4px 4px 0",
+                        borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
+                        boxShadow: "var(--shadow-sm)",
+                        transition: "box-shadow var(--transition-fast)",
                       }}
                     >
                       <div style={{ fontWeight: 700, color: "var(--color-critical)", marginBottom: "2px" }}>
@@ -459,7 +475,7 @@ function App(): React.ReactElement {
                       justifyContent: "center",
                       width: "16px",
                       height: "16px",
-                      borderRadius: "3px",
+                      borderRadius: "var(--radius-sm)",
                       backgroundColor: "rgba(255, 170, 0, 0.15)",
                       fontSize: "0.6rem",
                     }}>◆</span>
@@ -478,7 +494,9 @@ function App(): React.ReactElement {
                           padding: "var(--sp-2) var(--sp-3)",
                           marginBottom: "var(--sp-2)",
                           fontSize: "var(--fs-meta)",
-                          borderRadius: "0 4px 4px 0",
+                          borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
+                          boxShadow: "var(--shadow-sm)",
+                          transition: "box-shadow var(--transition-fast)",
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", marginBottom: "4px" }}>
@@ -487,7 +505,7 @@ function App(): React.ReactElement {
                             fontWeight: 700,
                             color: severityColor,
                             padding: "2px var(--sp-2)",
-                            borderRadius: "4px",
+                            borderRadius: "var(--radius-sm)",
                             border: `1px solid ${isCritical ? 'var(--color-critical)' : 'var(--color-warning)'}`,
                             backgroundColor: isCritical ? 'rgba(255,51,51,0.15)' : 'rgba(255,170,0,0.12)',
                             letterSpacing: "0.05em",
