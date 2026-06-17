@@ -19,11 +19,13 @@ so the env-var writes only need to be correct at that instant.
 The LangGraph agents (coordinator, ground_ops, emergency_response) pass
 credentials directly to ``ChatOpenAI`` and never touch ``os.environ``.
 
-Usage::
-
-    tasks, errors = await launch_agents()
-    # tasks: list[asyncio.Task] — cancel them on shutdown
-    # errors: list[str] — agent names that failed to build
+Import isolation
+~~~~~~~~~~~~~~~~
+Each agent has a ``prompts.py`` with its own system prompt.  When all
+agent directories are on ``sys.path`` simultaneously, Python finds the
+wrong ``prompts.py`` first.  To avoid this, each agent's directory is
+added to ``sys.path`` **only during its own adapter import**, then
+removed immediately after so the next agent gets a clean path.
 """
 
 from __future__ import annotations
@@ -38,8 +40,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Agent registry — name → (env_id_key, env_api_key, adapter_builder_module,
-#                         adapter_builder_func)
+# Agent registry
 # ---------------------------------------------------------------------------
 
 _AGENTS: list[dict[str, str]] = [
@@ -88,35 +89,17 @@ _AGENTS: list[dict[str, str]] = [
 ]
 
 
-def _ensure_agent_import_paths() -> None:
-    """Add agent directories to sys.path so their prompts modules resolve."""
-    # runner.py is at backend/app/agents/runner.py → 4 parents to project root
-    project_root = Path(__file__).resolve().parent.parent.parent.parent
-    agents_dir = project_root / "agents"
-    for agent_entry in _AGENTS:
-        agent_subdir = agents_dir / agent_entry["name"]
-        agent_str = str(agent_subdir)
-        if agent_str not in sys.path:
-            sys.path.insert(0, agent_str)
-    # Also ensure project root is importable for shared.*
-    project_str = str(project_root)
-    if project_str not in sys.path:
-        sys.path.insert(0, project_str)
+def _get_project_root() -> Path:
+    """Return the project root (4 levels up from runner.py)."""
+    return Path(__file__).resolve().parent.parent.parent.parent
 
 
 def _build_agent(agent_entry: dict[str, str]):
     """Build a single Band Agent from the registry entry.
 
-    This handles adapter construction (which may set env vars) and
-    Band Agent creation.  Must be called sequentially for agents that
-    mutate os.environ.
-
-    Returns:
-        (name, band_agent) tuple on success.
-
-    Raises:
-        ValueError: If required env vars are missing.
-        Exception: If adapter construction fails.
+    Temporarily adds the agent's subdirectory to ``sys.path`` so that
+    its ``from prompts import ...`` resolves correctly, then removes it
+    before the next agent runs.
     """
     name = agent_entry["name"]
     agent_id = os.environ.get(agent_entry["agent_id_env"], "")
@@ -129,12 +112,28 @@ def _build_agent(agent_entry: dict[str, str]):
             f"{agent_entry['api_key_env']}={'SET' if api_key else 'MISSING'}"
         )
 
-    # Import the adapter builder module
-    mod = importlib.import_module(agent_entry["adapter_module"])
-    builder = getattr(mod, agent_entry["adapter_func"])
-    adapter = builder()
+    # --- Isolated import path for this agent's prompts module ---
+    project_root = _get_project_root()
+    agent_dir = str(project_root / "agents" / name)
+    project_str = str(project_root)
 
-    # Import and create the Band Agent
+    # Ensure project root is on sys.path (for shared.* imports)
+    if project_str not in sys.path:
+        sys.path.insert(0, project_str)
+
+    # Temporarily add THIS agent's directory at position 0
+    sys.path.insert(0, agent_dir)
+    try:
+        # Force fresh import so this agent's prompts module is found
+        mod = importlib.import_module(agent_entry["adapter_module"])
+        builder = getattr(mod, agent_entry["adapter_func"])
+        adapter = builder()
+    finally:
+        # Remove the agent directory from sys.path
+        if agent_dir in sys.path:
+            sys.path.remove(agent_dir)
+
+    # Create the Band Agent
     from band import Agent
 
     agent = Agent.create(
@@ -166,8 +165,6 @@ async def launch_agents() -> tuple[list[asyncio.Task], list[str]]:
         asyncio.Task objects and errors is a list of agent names that
         failed to build.
     """
-    _ensure_agent_import_paths()
-
     tasks: list[asyncio.Task] = []
     errors: list[str] = []
 
