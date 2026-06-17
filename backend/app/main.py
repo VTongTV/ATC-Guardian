@@ -175,6 +175,25 @@ async def lifespan(app: FastAPI):
         mention_map=mention_map,
         owner_user_id=settings.band_owner_user_id,
     )
+    # In live mode, try to launch all 6 Band agents as in-process asyncio
+    # tasks.  This lets the entire system run on a single Render web service
+    # without separate subprocesses.  If agent credentials are missing, we
+    # fall back to the old behaviour (agents must be launched externally).
+    agent_tasks: list[asyncio.Task] = []
+    if settings.band_mode == "live":
+        from backend.app.agents.runner import launch_agents
+
+        try:
+            agent_tasks, agent_errors = await launch_agents()
+            if agent_tasks:
+                os.environ["LABLAB_AGENTS_LAUNCHED"] = "1"
+                logger.info(
+                    "Embedded agent runner: %d agents launched, %d failed",
+                    len(agent_tasks),
+                    len(agent_errors),
+                )
+        except Exception:
+            logger.exception("Embedded agent runner failed — agents must run externally")
     _warn_if_live_agents_not_running(settings, mention_map)
 
     # Always wire the decision service into sim_agents so that the
@@ -228,6 +247,10 @@ async def lifespan(app: FastAPI):
     service.stop_loop()
     task.cancel()
     collab_task.cancel()
+    # Cancel embedded agent tasks if running
+    if agent_tasks:
+        from backend.app.agents.runner import shutdown_agents
+        shutdown_agents(agent_tasks)
     await band_poller.close()
     await band_client.close()
     await opensky_client.close()

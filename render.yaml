@@ -2,6 +2,7 @@
 # Docs: https://render.com/docs/blueprint-spec
 # Deploys the FastAPI app as a web service. Set the environment variables
 # from .env.example in the Render dashboard (or via a secret group).
+# All 6 Band agents run as in-process asyncio tasks — no separate services needed.
 
 services:
   - type: web
@@ -14,7 +15,7 @@ services:
     autoDeploy: true
     envVars:
       - key: BAND_MODE
-        value: sim
+        value: live
       - key: DEFAULT_SCENARIO_ID
         value: SCN-A
       - key: SIMULATION_INTERVAL_SECONDS
@@ -24,10 +25,35 @@ services:
         sync: false
       - key: LLM_PROVIDER
         value: openrouter
-      # Secrets — set in the Render dashboard:
+      # Secrets — set in the Render dashboard (or via a secret group):
       - key: OPENROUTER_API_KEY
         sync: false
       - key: BAND_API_KEY
         sync: false
       - key: BAND_ROOM_ID
+        sync: false
+      # --- 6 Agent credentials (must all be set for embedded runner) ---
+      - key: COORDINATOR_AGENT_ID
+        sync: false
+      - key: COORDINATOR_API_KEY
+        sync: false
+      - key: CONFLICT_DETECTOR_AGENT_ID
+        sync: false
+      - key: CONFLICT_DETECTOR_API_KEY
+        sync: false
+      - key: WEATHER_ANALYST_AGENT_ID
+        sync: false
+      - key: WEATHER_ANALYST_API_KEY
+        sync: false
+      - key: SAFETY_REVIEWER_AGENT_ID
+        sync: false
+      - key: SAFETY_REVIEWER_API_KEY
+        sync: false
+      - key: GROUND_OPS_AGENT_ID
+        sync: false
+      - key: GROUND_OPS_API_KEY
+        sync: false
+      - key: EMERGENCY_RESPONSE_AGENT_ID
+        sync: false
+      - key: EMERGENCY_RESPONSE_API_KEY
         sync: false
