@@ -128,8 +128,21 @@ def _build_agent(agent_entry: dict[str, str]):
     # Temporarily add THIS agent's directory at position 0
     sys.path.insert(0, agent_dir)
     try:
-        # Force fresh import so this agent's prompts module is found
-        mod = importlib.import_module(agent_entry["adapter_module"])
+        # Force fresh import so this agent's prompts module is found.
+        # Remove any cached modules from previous agents to avoid
+        # "cannot import name 'X' from 'prompts'" cross-contamination.
+        mod_name = agent_entry["adapter_module"]
+        # e.g. "agents.coordinator.agent" → remove agents.coordinator.prompts
+        parts = mod_name.rsplit(".", 1)  # ["agents.coordinator", "agent"]
+        pkg_prefix = parts[0]  # "agents.coordinator"
+        stale_keys = [
+            k for k in list(sys.modules)
+            if k == pkg_prefix or k.startswith(pkg_prefix + ".")
+        ]
+        for k in stale_keys:
+            del sys.modules[k]
+
+        mod = importlib.import_module(mod_name)
         builder = getattr(mod, agent_entry["adapter_func"])
         adapter = builder()
     finally:
