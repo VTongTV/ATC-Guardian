@@ -230,13 +230,49 @@ async def lifespan(app: FastAPI):
     )
     await band_poller.start_polling()
 
-    # Start simulation loop
-    task = asyncio.create_task(service.start_loop(settings.simulation_interval_seconds))
-    collab_task = asyncio.create_task(
-        _collaboration_loop(service, poster, ingester, settings.simulation_interval_seconds)
-    )
+    # Simulation loop and collaboration loop — do NOT auto-start.
+    # The loops only run when a demo is explicitly activated via
+    # /demo/start so agents stay idle (no LLM calls, no Band
+    # dispatches) until the controller is ready.
+    simulation_task: asyncio.Task | None = None
+    collab_task: asyncio.Task | None = None
+
+    def _start_demo_loops() -> None:
+        """Start the simulation + collaboration loops (idempotent)."""
+        nonlocal simulation_task, collab_task
+        if simulation_task and not simulation_task.done():
+            logger.info("Demo loops already running")
+            return
+        service.is_running = True
+        simulation_task = asyncio.create_task(
+            service.start_loop(settings.simulation_interval_seconds)
+        )
+        collab_task = asyncio.create_task(
+            _collaboration_loop(
+                service, poster, ingester, settings.simulation_interval_seconds
+            )
+        )
+        logger.info("Demo loops started — agents will now receive dispatches")
+
+    def _stop_demo_loops() -> None:
+        """Stop the simulation + collaboration loops."""
+        nonlocal simulation_task, collab_task
+        service.stop_loop()
+        poster.reset()
+        if simulation_task and not simulation_task.done():
+            simulation_task.cancel()
+        if collab_task and not collab_task.done():
+            collab_task.cancel()
+        simulation_task = None
+        collab_task = None
+        logger.info("Demo loops stopped — agents idle until next activation")
+
+    # Expose start/stop to the data router so /demo/start and /demo/stop
+    # can trigger them.
+    data_router.set_demo_loop_controls(_start_demo_loops, _stop_demo_loops)
+
     logger.info(
-        "ATC Guardian backend started with scenario %s (BAND_MODE=%s)",
+        "ATC Guardian backend started with scenario %s (BAND_MODE=%s) — demo paused",
         settings.default_scenario_id,
         settings.band_mode,
     )
@@ -244,9 +280,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    service.stop_loop()
-    task.cancel()
-    collab_task.cancel()
+    _stop_demo_loops()
     # Cancel embedded agent tasks if running
     if agent_tasks:
         from backend.app.agents.runner import shutdown_agents

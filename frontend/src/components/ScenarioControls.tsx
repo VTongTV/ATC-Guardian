@@ -96,7 +96,18 @@ export function ScenarioControls(): React.ReactElement {
       clearDemoTimers();
       setDemoPlaying(false);
       setNarration("");
+      try {
+        await fetch("/data/demo/stop", { method: "POST" });
+      } catch {
+        /* backend offline */
+      }
       return;
+    }
+    // Start the simulation + agent collaboration loops
+    try {
+      await fetch("/data/demo/start", { method: "POST" });
+    } catch {
+      /* backend offline */
     }
     setDemoPlaying(true);
     for (const scenario of SCENARIOS) {
@@ -128,6 +139,8 @@ export function ScenarioControls(): React.ReactElement {
       const newId = e.target.value;
       setSwitching(true);
       try {
+        // Start simulation loops if not already running
+        await fetch("/data/demo/start", { method: "POST" });
         const res = await fetch(`/data/scenario/${newId}`, { method: "POST" });
         if (res.ok) {
           setActiveScenario(newId);
