@@ -141,6 +141,10 @@ def _build_agent(agent_entry: dict[str, str]):
         ]
         for k in stale_keys:
             del sys.modules[k]
+        # Also remove the bare "prompts" module cached by the previous
+        # agent's `from prompts import X`.  Without this, the next agent
+        # finds the wrong prompts.py in sys.modules.
+        sys.modules.pop("prompts", None)
 
         mod = importlib.import_module(mod_name)
         builder = getattr(mod, agent_entry["adapter_func"])
