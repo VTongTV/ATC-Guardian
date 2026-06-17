@@ -9,9 +9,6 @@ import { useCallback, useEffect, useRef } from "react";
 import { useAtcStore } from "../stores/atcStore";
 import type { RadarSnapshot } from "../lib/types";
 
-/** WebSocket base URL. In dev, Vite proxies /ws to the backend. */
-const WS_BASE_URL: string = import.meta.env.VITE_WS_URL ?? "";
-
 /** HTTP fallback base URL for polling. */
 const HTTP_BASE_URL: string = import.meta.env.VITE_API_URL ?? "";
 
