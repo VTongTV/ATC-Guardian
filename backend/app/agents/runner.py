@@ -121,6 +121,10 @@ def _build_agent(agent_entry: dict[str, str]):
     if project_str not in sys.path:
         sys.path.insert(0, project_str)
 
+    # Set AIMLAPI_CALLER_TAG so key rotation picks a different key per agent
+    old_caller_tag = os.environ.get("AIMLAPI_CALLER_TAG")
+    os.environ["AIMLAPI_CALLER_TAG"] = name
+
     # Temporarily add THIS agent's directory at position 0
     sys.path.insert(0, agent_dir)
     try:
@@ -132,6 +136,11 @@ def _build_agent(agent_entry: dict[str, str]):
         # Remove the agent directory from sys.path
         if agent_dir in sys.path:
             sys.path.remove(agent_dir)
+        # Restore AIMLAPI_CALLER_TAG
+        if old_caller_tag is None:
+            os.environ.pop("AIMLAPI_CALLER_TAG", None)
+        else:
+            os.environ["AIMLAPI_CALLER_TAG"] = old_caller_tag
 
     # Create the Band Agent
     from band import Agent
