@@ -51,11 +51,24 @@ export function useRadarData(): {
   );
 
   const connectWebSocket = useCallback(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = WS_BASE_URL
-      ? WS_BASE_URL.replace(/^https?:\/\//, "").replace(/^wss?:\/\//, "")
-      : `${window.location.host}`;
-    const wsUrl = `${protocol}//${host}/ws/radar`;
+    // In production (Vercel), Vercel rewrites cannot proxy WebSockets.
+    // Connect directly to the Render backend WSS endpoint instead.
+    let wsUrl: string;
+    if (import.meta.env.VITE_WS_URL) {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host = import.meta.env.VITE_WS_URL
+        .replace(/^https?:\/\//, "")
+        .replace(/^wss?:\/\//, "");
+      wsUrl = `${protocol}//${host}/ws/radar`;
+    } else if (window.location.protocol === "https:") {
+      // Production: connect directly to Render backend (Vercel can't proxy WS)
+      wsUrl = "wss://atc-guardian-backend.onrender.com/ws/radar";
+    } else {
+      // Dev: use Vite proxy (localhost)
+      const protocol = "ws:";
+      const host = `${window.location.host}`;
+      wsUrl = `${protocol}//${host}/ws/radar`;
+    }
 
     try {
       const ws = new WebSocket(wsUrl);
