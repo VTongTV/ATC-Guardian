@@ -239,7 +239,7 @@ export function DecisionPanel(): React.ReactElement {
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "APPROVED" })}
-                  style={btnStyle("#0a1a0a", "#33ff33", "rgba(51, 255, 51, 0.2)")}
+                  style={btnStyle("#0a1a0a", "#33ff33")}
                 >
                   {isBusy ? "..." : "APPROVE"}
                 </button>
@@ -247,7 +247,7 @@ export function DecisionPanel(): React.ReactElement {
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "MODIFIED" })}
-                  style={btnStyle("#1a1a0a", "#ffaa00", "rgba(255, 170, 0, 0.2)")}
+                  style={btnStyle("#1a1a0a", "#ffaa00")}
                 >
                   {isBusy ? "..." : "MODIFY"}
                 </button>
@@ -255,7 +255,7 @@ export function DecisionPanel(): React.ReactElement {
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "REJECTED" })}
-                  style={btnStyle("#1a0a0a", "#ff3333", "rgba(255, 51, 51, 0.2)")}
+                  style={btnStyle("#1a0a0a", "#ff3333")}
                 >
                   {isBusy ? "..." : "REJECT"}
                 </button>
@@ -269,7 +269,7 @@ export function DecisionPanel(): React.ReactElement {
 }
 
 /** Build a button style with the given bg/text colours. */
-function btnStyle(bg: string, color: string, hoverBg: string): React.CSSProperties {
+function btnStyle(bg: string, color: string): React.CSSProperties {
   return {
     flex: 1,
     backgroundColor: bg,
