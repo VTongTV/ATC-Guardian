@@ -13,18 +13,18 @@ import remarkGfm from "remark-gfm";
 import type { AuditEvent } from "../lib/types";
 import { useAtcStore } from "../stores/atcStore";
 
-/** Color mapping for agent names. */
+/** Color mapping for agent names (lowercase hyphenated handle → hex). */
 const AGENT_COLORS: Record<string, string> = {
   coordinator: "#4488ff",
   "conflict-detector": "#ffaa00",
   "weather-analyst": "#33ccff",
   "ground-ops": "#33ff33",
   "emergency-response": "#ff3333",
-  "safety-reviewer": "#aa88ff", // the 6th roster agent was missing
-  "system-ingest": "#888888", // backend posts @mentions as this identity
+  "safety-reviewer": "#aa88ff",
+  "system-ingest": "#888888",
 };
 
-/** Short labels for agents. */
+/** Short labels for agents (lowercase hyphenated handle → label). */
 const AGENT_SHORT: Record<string, string> = {
   coordinator: "COORD",
   "conflict-detector": "CNFLT",
@@ -34,6 +34,19 @@ const AGENT_SHORT: Record<string, string> = {
   "safety-reviewer": "SAFE",
   "system-ingest": "SYS",
 };
+
+/** Normalize an agent name to a lowercase hyphenated handle.
+
+ *  Band may return display names like "Conflict Detector" or "Weather
+ *  Analyst".  Our colour/short-label maps use handles like
+ *  "conflict-detector".  This function normalises both formats (and
+ *  already-normalised handles) to the handle form so lookups always hit. */
+function normalizeAgentHandle(name: string): string {
+  // Already a handle (lowercase, hyphens, no spaces) → return as-is.
+  if (/^[a-z][\w-]*$/.test(name)) return name;
+  // Display name like "Conflict Detector" → "conflict-detector"
+  return name.toLowerCase().replace(/\s+/g, "-");
+}
 
 /** Event types that represent a readable agent-to-agent message — i.e.
  *  the conversational content the chat panel should show, as opposed to
@@ -70,12 +83,12 @@ function formatTime(ts: string): string {
 
 /** Get colour for an agent, falling back to white. */
 function agentColor(name: string): string {
-  return AGENT_COLORS[name] ?? "#ffffff";
+  return AGENT_COLORS[normalizeAgentHandle(name)] ?? "#ffffff";
 }
 
 /** Get short label for an agent. */
 function agentShort(name: string): string {
-  return AGENT_SHORT[name] ?? name.toUpperCase().slice(0, 5);
+  return AGENT_SHORT[normalizeAgentHandle(name)] ?? name.toUpperCase().slice(0, 5);
 }
 
 /** Highlight @mentions inside a plain-text string. Only applied to text
@@ -178,7 +191,7 @@ function markdownComponents(accent: string) {
 export function AgentChatPanel(): React.ReactElement {
   const [messages, setMessages] = useState<AuditEvent[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
-  const prevLenRef = useRef(0);
+  const msgCountRef = useRef(0);
   const noteAgentReply = useAtcStore((s) => s.noteAgentReply);
 
   useEffect(() => {
@@ -203,9 +216,10 @@ export function AgentChatPanel(): React.ReactElement {
             .reverse();
           // When new messages arrive, signal the AGENT TEAM panel to flash
           // the node of the agent that sent the most recent one.
-          if (next.length > prevLenRef.current && next.length > 0) {
+          if (next.length > 0 && next.length > msgCountRef.current) {
             noteAgentReply(next[next.length - 1].agent_name);
           }
+          msgCountRef.current = next.length;
           setMessages(next);
         }
       } catch {
@@ -222,22 +236,15 @@ export function AgentChatPanel(): React.ReactElement {
     };
   }, [noteAgentReply]);
 
-  // Auto-scroll to the newest message. useLayoutEffect fires before
-  // the browser paints so there is no "flash of top-then-bottom".
+  // Auto-scroll: useLayoutEffect fires after DOM mutations but before
+  // paint, so the scroll happens before the user sees anything — no
+  // "flash of top-then-bottom". We always scroll to the bottom whenever
+  // the message list changes so the latest message is immediately visible.
   useLayoutEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const prevLen = prevLenRef.current;
-    prevLenRef.current = messages.length;
-    const grew = messages.length > prevLen;
-    const firstPopulate = prevLen === 0 && messages.length > 0;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    // Always scroll on first populate or when new messages arrive.
-    // When count is unchanged, only re-stick if user is near bottom.
-    if (grew || firstPopulate || nearBottom) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [messages.length]);
+    el.scrollTop = el.scrollHeight;
+  }, [messages]);
 
   const panelStyle: React.CSSProperties = {
     display: "flex",
