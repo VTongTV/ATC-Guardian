@@ -201,10 +201,9 @@ OPENROUTER_RATE_LIMIT_RPD: int = 200
 AIMLAPI_BASE_URL: str = "https://api.aimlapi.com/v1"
 """AI/ML API base URL (OpenAI-compatible)."""
 
-AIMLAPI_DEFAULT_MODEL: str = "deepseek/deepseek-v4-flash"
-"""Default AI/ML API model. DeepSeek V4 Flash uses 3-4x fewer tokens
-than V4 Pro and supports disabling thinking mode, making it the
-safe default for demos with tight API budgets. The per-agent
+AIMLAPI_DEFAULT_MODEL: str = "deepseek/deepseek-v4-pro"
+"""Default AI/ML API model. DeepSeek V4 Pro with ``reasoning_effort=low``
+minimises thinking tokens while keeping pro-quality output. The per-agent
 overrides in partner_routing.py still apply when configured."""
 
 AIMLAPI_REASONING_MODEL: str = "openai/gpt-5-1"

@@ -14,10 +14,10 @@ LLM invocation pattern mandated by AGENTS.md Rule 7.5.
 Rate limiting
 ~~~~~~~~~~~~~
 Each agent is allowed a maximum of 3 dispatched messages per rolling
-60-second window. This prevents excessive LLM API consumption while
-still allowing agents to handle multiple concurrent events. When an
-agent hits the limit, the dispatch is logged but silently dropped —
-the agent is already busy processing earlier messages.
+60-second window. This works in concert with the per-agent throttle
+in ``runner.py`` (also 3/min) to prevent excessive LLM API consumption
+while still allowing agents to handle multiple concurrent events. When
+an agent hits the limit, the dispatch is logged but silently dropped.
 """
 
 from __future__ import annotations

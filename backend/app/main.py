@@ -243,6 +243,10 @@ async def lifespan(app: FastAPI):
         if simulation_task and not simulation_task.done():
             logger.info("Demo loops already running")
             return
+        # Activate agent message processing
+        if agent_tasks:
+            from backend.app.agents.runner import set_demo_active
+            set_demo_active(True)
         service.is_running = True
         simulation_task = asyncio.create_task(
             service.start_loop(settings.simulation_interval_seconds)
@@ -254,9 +258,26 @@ async def lifespan(app: FastAPI):
         )
         logger.info("Demo loops started — agents will now receive dispatches")
 
-    def _stop_demo_loops() -> None:
-        """Stop the simulation + collaboration loops."""
+    async def _stop_demo_loops_async() -> None:
+        """Stop the simulation + collaboration loops and silence agents.
+
+        1. Deactivate the demo flag so agents' _on_execute drops messages.
+        2. Post 2 STOP directive messages to the Band room so agents that
+           are mid-LLM-call see the stop order in their context.
+        3. Cancel the simulation and collaboration loops.
+        """
         nonlocal simulation_task, collab_task
+        # Step 1: Deactivate agent message processing gate
+        if agent_tasks:
+            from backend.app.agents.runner import set_demo_active
+            set_demo_active(False)
+        # Step 2: Post STOP directives to the Band room
+        try:
+            from backend.app.agents.runner import post_stop_directives
+            await post_stop_directives(band_client)
+        except Exception:
+            logger.exception("Failed to post STOP directives to Band room")
+        # Step 3: Cancel simulation + collab loops
         service.stop_loop()
         poster.reset()
         if simulation_task and not simulation_task.done():
@@ -266,6 +287,10 @@ async def lifespan(app: FastAPI):
         simulation_task = None
         collab_task = None
         logger.info("Demo loops stopped — agents idle until next activation")
+
+    def _stop_demo_loops() -> None:
+        """Synchronous wrapper — schedules the async stop in the event loop."""
+        asyncio.create_task(_stop_demo_loops_async())
 
     # Expose start/stop to the data router so /demo/start and /demo/stop
     # can trigger them.

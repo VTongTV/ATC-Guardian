@@ -26,6 +26,17 @@ agent directories are on ``sys.path`` simultaneously, Python finds the
 wrong ``prompts.py`` first.  To avoid this, each agent's directory is
 added to ``sys.path`` **only during its own adapter import**, then
 removed immediately after so the next agent gets a clean path.
+
+Demo-active guard & rate limiting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Agents are wrapped so they only process Band messages when the demo is
+active.  Each agent is also rate-limited to 3 LLM calls per rolling
+60-second window to prevent cascading @mention loops from burning tokens.
+
+When the demo stops, ``set_demo_active(False)`` is called and 2 STOP
+directive messages are posted to the Band room per agent (6 agents × 2
+= 12 messages).  These STOP directives tell each agent's LLM to cease
+all processing, thinking, and responding immediately.
 """
 
 from __future__ import annotations
@@ -35,9 +46,151 @@ import importlib
 import logging
 import os
 import sys
+import time
+from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Demo-active flag & per-agent rate limiter
+# ---------------------------------------------------------------------------
+
+_demo_active: bool = False
+"""Global flag — agents only process messages when True."""
+
+_AGENT_RATE_LIMIT: int = 3
+"""Maximum LLM responses per agent per rolling window."""
+
+_AGENT_RATE_WINDOW_SECONDS: float = 60.0
+"""Duration of the rolling rate-limit window in seconds."""
+
+_agent_timestamps: dict[str, list[float]] = defaultdict(list)
+"""Per-agent list of response timestamps for rate limiting."""
+
+
+def set_demo_active(active: bool) -> None:
+    """Set whether the demo is active and agents should process messages.
+
+    Called from main.py when /demo/start or /demo/stop is hit.
+    When switching to inactive, also resets per-agent rate-limit counters
+    so the next demo starts with a clean slate.
+
+    Args:
+        active: True to allow agents to process messages, False to block.
+    """
+    global _demo_active
+    _demo_active = active
+    if not active:
+        _agent_timestamps.clear()
+        logger.info("Demo deactivated — agents will drop all incoming messages")
+    else:
+        logger.info("Demo activated — agents will process messages")
+
+
+def is_demo_active() -> bool:
+    """Check if the demo is currently active."""
+    return _demo_active
+
+
+def _check_agent_rate_limit(agent_name: str) -> bool:
+    """Check whether an agent is within its per-minute message limit.
+
+    Args:
+        agent_name: The agent identity being rate-limited.
+
+    Returns:
+        True if the agent is allowed to respond, False if it should drop.
+    """
+    now = time.monotonic()
+    timestamps = _agent_timestamps[agent_name]
+    cutoff = now - _AGENT_RATE_WINDOW_SECONDS
+    _agent_timestamps[agent_name] = [t for t in timestamps if t > cutoff]
+    timestamps = _agent_timestamps[agent_name]
+
+    if len(timestamps) >= _AGENT_RATE_LIMIT:
+        logger.warning(
+            "Agent rate limit hit for %s: %d/%d in last %.0fs — dropping",
+            agent_name,
+            len(timestamps),
+            _AGENT_RATE_LIMIT,
+            _AGENT_RATE_WINDOW_SECONDS,
+        )
+        return False
+
+    timestamps.append(now)
+    return True
+
+
+# ---------------------------------------------------------------------------
+# STOP directive messages
+# ---------------------------------------------------------------------------
+
+_STOP_DIRECTIVE = (
+    "[SYSTEM DIRECTIVE — STOP] Demo has been stopped. "
+    "Cease all processing, thinking, and responding immediately. "
+    "Do NOT reply, @mention, or generate any output. "
+    "Drop this message and all subsequent messages until you receive "
+    "a new dispatch from @system-ingest. This is a hard stop order."
+)
+
+_STOP_DIRECTIVE_REPEAT = (
+    "[SYSTEM DIRECTIVE — STOP — CONFIRMATION] "
+    "This is a repeat STOP order. Demo is OFF. "
+    "All agents must immediately halt all LLM processing. "
+    "Do not respond. Do not think. Do not @mention anyone. "
+    "Silence all output until @system-ingest sends a new dispatch."
+)
+
+
+async def post_stop_directives(band_client: Any) -> None:
+    """Post 2 STOP directive messages to the Band room for each agent.
+
+    These messages appear as @mentions to every agent in the room,
+    instructing them to immediately cease all processing. Two are sent
+    in sequence to ensure agents that are mid-processing see at least one.
+
+    Args:
+        band_client: The BandClient (sim or live) to post messages through.
+    """
+    from shared.band_client import BandOutboundMessage
+
+    all_agent_handles = [
+        "conflict-detector",
+        "safety-reviewer",
+        "weather-analyst",
+        "coordinator",
+        "emergency-response",
+        "ground-ops",
+    ]
+
+    for i, (content, label) in enumerate([
+        (_STOP_DIRECTIVE, "STOP directive 1"),
+        (_STOP_DIRECTIVE_REPEAT, "STOP directive 2"),
+    ]):
+        msg = BandOutboundMessage(
+            sender="system-ingest",
+            content=(
+                f"@conflict-detector @safety-reviewer @weather-analyst "
+                f"@coordinator @emergency-response @ground-ops {content}"
+            ),
+            mentions=all_agent_handles,
+            metadata={
+                "kind": "system-stop",
+                "directive": label,
+            },
+            correlation_id=f"stop-directive-{i + 1}",
+        )
+        try:
+            await band_client.post_message(msg)
+            logger.info("Posted %s to Band room", label)
+        except Exception:
+            logger.exception("Failed to post %s", label)
+        # Brief pause between the two directives
+        if i == 0:
+            await asyncio.sleep(0.5)
+
 
 # ---------------------------------------------------------------------------
 # Agent registry
@@ -168,7 +321,26 @@ def _build_agent(agent_entry: dict[str, str]):
         api_key=api_key,
     )
 
-    logger.info("Built agent: %s (id=%s...)", name, agent_id[:8])
+    # --- Wrap _on_execute with demo-active guard + rate limiter ---
+    _original_on_execute = agent._on_execute
+
+    async def _guarded_on_execute(ctx, event):
+        """Only process events when demo is active + within rate limit."""
+        if not _demo_active:
+            logger.info(
+                "Agent '%s' dropping message — demo not active", name
+            )
+            return
+        if not _check_agent_rate_limit(name):
+            logger.info(
+                "Agent '%s' dropping message — rate limited", name
+            )
+            return
+        await _original_on_execute(ctx, event)
+
+    agent._on_execute = _guarded_on_execute
+
+    logger.info("Built agent: %s (id=%s..., demo-guard + rate-limit active)", name, agent_id[:8])
     return name, agent
 
 

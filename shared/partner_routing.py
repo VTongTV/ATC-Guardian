@@ -1,29 +1,23 @@
 """Partner model routing — per-agent AI/ML API model choices.
 
-All six ATC Guardian agents route through AI/ML API, but each uses the
-frontier model best matched to its task. This "one API, many labs, right
-model per job" choice is itself the pitch for the 'Best Use of AI/ML API'
-($1,000) partner prize: a single key gives access to Zhipu GLM-5.1,
-DeepSeek V4 Pro/Flash, and Moonshot Kimi K2-6, and we pick the strongest
-fit for each agent rather than forcing one model everywhere.
+All six ATC Guardian agents route through AI/ML API, using DeepSeek V4 Pro
+with ``reasoning_effort=low`` across the board. This "one API, many labs,
+right model per job" choice is itself the pitch for the 'Best Use of
+AI/ML API' ($1,000) partner prize: a single key gives access to
+DeepSeek V4 Pro, Zhipu GLM-5.1, and Moonshot Kimi K2-6, and we pick
+the strongest fit for each agent rather than forcing one model everywhere.
+
+Token economy: V4 Pro with ``reasoning_effort=low`` minimises thinking
+tokens while keeping pro-quality output. Combined with per-agent rate
+limits (3 messages/minute) and prompt-level anti-chatter directives, this
+keeps demo burn rates sustainable.
 
 The per-agent choices are principled:
 
-- Zhipu GLM-5.1 (``zhipu/glm-5.1``) — Safety Reviewer and Emergency
-  Response. Both return strict structured verdicts / phase
-  classifications that drive the human-on-the-loop decision or a 7700
-  response. GLM-5.1's dependable structured output at temperature 0
-  keeps these highest-stakes paths deterministic.
-- DeepSeek V4 Pro (``deepseek/deepseek-v4-pro``) — Conflict Detector and
-  Weather Analyst. Both need deep analytical reasoning (CPA advisory
-  generation, SIGMET interpretation + deviation routing) over rich
-  context. V4 Pro pairs that reasoning with reliable JSON output.
-- Moonshot Kimi K2-6 (``moonshot/kimi-k2-6``) — Coordinator. The
-  orchestration layer's multi-step @mention dispatch spans the whole
-  agent roster; Kimi's long-context instruction-following suits it.
-- DeepSeek V4 Flash (``deepseek/deepseek-v4-flash``) — Ground Ops.
-  Repeated bounded tool calls (runway / ATIS / NOTAM lookups) favour a
-  fast, cheap model; V4 Flash is the low-latency variant of the family.
+- DeepSeek V4 Pro (``deepseek/deepseek-v4-pro``) — All agents. V4 Pro
+  pairs strong analytical reasoning with reliable structured JSON output.
+  With ``reasoning_effort=low`` and ``max_tokens`` caps, thinking tokens
+  are minimised while output quality remains high.
 
 These are the recommended models when ``LLM_PROVIDER=aimlapi``. Each is
 applied via the per-agent ``*_MODEL`` env var (see
@@ -62,68 +56,76 @@ PARTNER_MODEL_ASSIGNMENTS: list[PartnerModelAssignment] = [
     PartnerModelAssignment(
         agent_name="conflict-detector",
         provider="aimlapi",
-        model="deepseek/deepseek-v4-flash",
+        model="deepseek/deepseek-v4-pro",
         rationale=(
             "Conflict detection is the most time-critical loop in ATC "
-            "Guardian (seconds matter). DeepSeek V4 Flash gives fast "
-            "structured JSON output at 3-4x lower token cost than V4 Pro, "
-            "making it ideal for the high-frequency conflict-check cycle."
+            "Guardian (seconds matter). DeepSeek V4 Pro pairs strong "
+            "analytical reasoning with reliable structured JSON output, so "
+            "the Conflict Detector's CPA advisories are well-formed every "
+            "time — essential because the Safety Reviewer and the controller "
+            "both parse them downstream."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="safety-reviewer",
         provider="aimlapi",
-        model="deepseek/deepseek-v4-flash",
+        model="deepseek/deepseek-v4-pro",
         rationale=(
             "The adversarial Safety Reviewer returns an explicit "
-            "APPROVE/REJECT/MODIFY verdict. V4 Flash with low reasoning "
-            "effort gives fast, reliable structured output for this "
-            "bounded classification task."
+            "APPROVE/REJECT/MODIFY verdict. V4 Pro with reasoning_effort=low "
+            "gives fast, dependable structured output for this bounded "
+            "classification task while keeping thinking tokens minimal."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="weather-analyst",
         provider="aimlapi",
-        model="deepseek/deepseek-v4-flash",
+        model="deepseek/deepseek-v4-pro",
         rationale=(
             "Weather analysis (SIGMET interpretation, deviation routing) "
-            "benefits from V4 Flash's speed and 3-4x token savings — "
-            "critical when the demo budget is tight."
+            "rewards deep reasoning over unstructured meteorological text. "
+            "DeepSeek V4 Pro is the strongest analytical model on AI/ML API "
+            "for this, turning raw SIGMET polygons into a crisp deviation "
+            "advisory the Coordinator can act on."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="coordinator",
         provider="aimlapi",
-        model="deepseek/deepseek-v4-flash",
+        model="deepseek/deepseek-v4-pro",
         rationale=(
             "The Coordinator's multi-step dispatch spans the whole agent "
-            "roster through @mentions. V4 Flash handles this orchestration "
-            "efficiently with low reasoning effort and minimal token usage."
+            "roster through @mentions. V4 Pro with reasoning_effort=low "
+            "handles this orchestration efficiently — deep enough for "
+            "correct routing, but no wasted thinking tokens."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="emergency-response",
         provider="aimlapi",
-        model="deepseek/deepseek-v4-flash",
+        model="deepseek/deepseek-v4-pro",
         rationale=(
-            "7700 emergencies need fast response. V4 Flash with "
-            "reasoning_effort=low gives the quickest structured classification "
-            "of emergency phase and resolution plan."
+            "7700 emergencies are the highest-stakes path in the system. "
+            "V4 Pro with reasoning_effort=low gives the most reliable "
+            "structured output at temperature 0, so the emergency phase "
+            "classification and resolution plan are deterministic and "
+            "trustworthy under pressure."
         ),
         prize_category="Best Use of AI/ML API",
     ),
     PartnerModelAssignment(
         agent_name="ground-ops",
         provider="aimlapi",
-        model="deepseek/deepseek-v4-flash",
+        model="deepseek/deepseek-v4-pro",
         rationale=(
             "Ground Ops performs repeated bounded tool-call lookups "
-            "(runway / ATIS / NOTAM) that favour speed over deep "
-            "reasoning. V4 Flash is the low-latency, low-cost choice."
+            "(runway / ATIS / NOTAM). V4 Pro with reasoning_effort=low "
+            "and max_tokens=512 gives precise structured output without "
+            "wasting thinking tokens on simple lookups."
         ),
         prize_category="Best Use of AI/ML API",
     ),
