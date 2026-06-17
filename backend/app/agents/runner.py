@@ -90,7 +90,8 @@ _AGENTS: list[dict[str, str]] = [
 
 def _ensure_agent_import_paths() -> None:
     """Add agent directories to sys.path so their prompts modules resolve."""
-    project_root = Path(__file__).resolve().parent.parent.parent
+    # runner.py is at backend/app/agents/runner.py → 4 parents to project root
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
     agents_dir = project_root / "agents"
     for agent_entry in _AGENTS:
         agent_subdir = agents_dir / agent_entry["name"]
