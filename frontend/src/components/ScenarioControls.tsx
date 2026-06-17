@@ -174,6 +174,7 @@ export function ScenarioControls(): React.ReactElement {
       {/* Scenario dropdown */}
       <div style={{ position: "relative" }}>
         <select
+          aria-label="Select active scenario"
           style={{
             backgroundColor: "var(--bg-surface)",
             color: "var(--color-nominal)",

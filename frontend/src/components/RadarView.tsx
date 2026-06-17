@@ -705,6 +705,21 @@ export function RadarView(): React.ReactElement {
   // Track previous scenario ID so we only reset the map view on change.
   const prevScenarioRef = useRef(scenarioId);
 
+  // Add aria-labels to Leaflet zoom controls after mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const zoomIn = document.querySelector('.leaflet-control-zoom-in');
+      const zoomOut = document.querySelector('.leaflet-control-zoom-out');
+      if (zoomIn && !zoomIn.getAttribute('aria-label')) {
+        zoomIn.setAttribute('aria-label', 'Zoom in');
+      }
+      if (zoomOut && !zoomOut.getAttribute('aria-label')) {
+        zoomOut.setAttribute('aria-label', 'Zoom out');
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
   const center: [number, number] = [centerLat, centerLng];
 
   // Build a quick-lookup map for conflict line endpoints
@@ -783,19 +798,20 @@ export function RadarView(): React.ReactElement {
         bottom: '2rem',
         left: '0.75rem',
         zIndex: 1000,
-        backgroundColor: 'rgba(5, 8, 5, 0.85)',
-        border: '1px solid #1a2e1a',
-        borderRadius: '4px',
+        backgroundColor: 'rgba(5, 8, 5, 0.92)',
+        border: '1px solid var(--border-mid)',
+        borderRadius: 'var(--radius-md)',
         padding: '0.5rem 0.6rem',
         fontFamily: 'var(--font-mono)',
-        fontSize: '0.55rem',
-        color: '#88aa88',
+        fontSize: 'var(--fs-micro)',
+        color: 'var(--text-secondary)',
         display: 'flex',
         flexDirection: 'column' as const,
         gap: '0.3rem',
-        backdropFilter: 'blur(4px)',
+        backdropFilter: 'blur(6px)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       }}>
-        <div style={{ fontWeight: 600, color: '#33ff33', fontSize: '0.6rem', marginBottom: '0.15rem' }}>LEGEND</div>
+        <div style={{ fontWeight: 600, color: 'var(--color-nominal)', fontSize: 'var(--fs-meta)', marginBottom: '0.15rem' }}>LEGEND</div>
         {/* Aircraft */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 2 L14 8 L20 10 L14 12 L14 18 L17 20 L17 21 L12 19 L7 21 L7 20 L10 18 L10 12 L4 10 L10 8 Z" fill="#33ff33" opacity="0.9"/></svg>
@@ -804,17 +820,17 @@ export function RadarView(): React.ReactElement {
         {/* Conflict */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <svg width="12" height="6" viewBox="0 0 12 6"><line x1="0" y1="3" x2="12" y2="3" stroke="#ffaa00" strokeWidth="1.5" strokeDasharray="3,2" /></svg>
-          <span style={{ color: '#ffaa00' }}>Conflict</span>
+          <span style={{ color: 'var(--color-warning)' }}>Conflict</span>
         </div>
         {/* Weather Hazard */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#ff3333" strokeWidth="1" strokeDasharray="2,1.5" opacity="0.8" /></svg>
-          <span style={{ color: '#ff3333' }}>Weather Hazard</span>
+          <span style={{ color: 'var(--color-nominal-text)' }}>Weather Hazard</span>
         </div>
         {/* Radar Coverage */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#1a3a1a" strokeWidth="0.8" strokeDasharray="1.5,3" /></svg>
-          <span>Radar Coverage</span>
+          <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="var(--border-bright)" strokeWidth="0.8" strokeDasharray="1.5,3" /></svg>
+          <span style={{ color: 'var(--text-dim)' }}>Radar Coverage</span>
         </div>
       </div>
     </div>

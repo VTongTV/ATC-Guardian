@@ -115,6 +115,7 @@ function App(): React.ReactElement {
           <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)" }}>
             <button
               onClick={() => setPage("dashboard")}
+              aria-label="Return to dashboard"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -243,6 +244,7 @@ function App(): React.ReactElement {
           {/* Agent Team nav button */}
           <button
             onClick={() => setPage("agent-team")}
+            aria-label="View agent team roster"
             style={{
               display: "flex",
               alignItems: "center",
@@ -485,6 +487,16 @@ function App(): React.ReactElement {
                     const isCritical = c.cpa.min_distance_nm < 3;
                     const severityColor = isCritical ? "var(--color-critical)" : "var(--color-warning)";
                     const severityLabel = isCritical ? "CRITICAL" : "CAUTION";
+                    // Scale CPA/Time visual urgency based on distance to separation minimum (5nm)
+                    const cpaRatio = Math.min(1, c.cpa.min_distance_nm / 5);
+                    const cpaColor = cpaRatio < 0.3 ? "var(--color-critical)"
+                      : cpaRatio < 0.6 ? "var(--color-warning)"
+                      : "var(--text-secondary)";
+                    const cpaWeight = cpaRatio < 0.3 ? 700 : 600;
+                    const cpaSize = cpaRatio < 0.3 ? "var(--fs-title)" : "var(--fs-body)";
+                    const timeColor = c.cpa.time_to_cpa_seconds <= 10 ? "var(--color-critical)"
+                      : c.cpa.time_to_cpa_seconds <= 30 ? "var(--color-warning)"
+                      : "var(--text-secondary)";
                     return (
                       <div
                         key={c.advisory_id}
@@ -516,9 +528,9 @@ function App(): React.ReactElement {
                             {c.cpa.aircraft_a_callsign} {" \u21C4 "} {c.cpa.aircraft_b_callsign}
                           </span>
                         </div>
-                        <div style={{ color: "var(--text-dim)", display: "flex", gap: "var(--sp-3)" }}>
-                          <span>CPA: <span style={{ color: "var(--text-secondary)" }}>{c.cpa.min_distance_nm}nm</span></span>
-                          <span>Time: <span style={{ color: "var(--text-secondary)" }}>{c.cpa.time_to_cpa_seconds}s</span></span>
+                        <div style={{ color: "var(--text-dim)", display: "flex", gap: "var(--sp-3)", alignItems: "baseline" }}>
+                          <span>CPA: <span style={{ color: cpaColor, fontWeight: cpaWeight, fontSize: cpaSize, transition: "color var(--transition-fast)" }}>{c.cpa.min_distance_nm}nm</span></span>
+                          <span>Time: <span style={{ color: timeColor, fontWeight: cpaRatio < 0.3 ? 700 : 600, transition: "color var(--transition-fast)" }}>{c.cpa.time_to_cpa_seconds}s</span></span>
                         </div>
                       </div>
                     );
@@ -527,18 +539,10 @@ function App(): React.ReactElement {
               )}
 
               {emergencies.length === 0 && conflicts.length === 0 && (
-                <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  padding: "var(--sp-4) var(--sp-2)",
-                  textAlign: "center",
-                  gap: "0.3rem",
-                }}>
-                  <div style={{ fontSize: "1.2rem", opacity: 0.4 }}>✓</div>
-                  <div style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)" }}>
-                    All clear — no active conflicts or emergencies
-                  </div>
+                <div className="atc-empty-state">
+                  <div className="atc-empty-state-icon">✓</div>
+                  <div className="atc-empty-state-title">All clear</div>
+                  <div className="atc-empty-state-desc">No active conflicts or emergencies</div>
                 </div>
               )}
             </div>

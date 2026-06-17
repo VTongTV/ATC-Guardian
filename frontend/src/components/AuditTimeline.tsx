@@ -5,12 +5,12 @@ import type { AuditEvent } from "../lib/types";
 
 /** Color and icon mapping for event types. */
 const EVENT_STYLE: Record<string, { color: string; icon: string }> = {
-  thought:     { color: "#888888", icon: "*" },
-  task:        { color: "#33ff33", icon: ">" },
-  message:     { color: "#4488ff", icon: "->" },
-  error:       { color: "#ff3333", icon: "!" },
-  tool_call:   { color: "#ffaa00", icon: "+" },
-  tool_result: { color: "#aa88ff", icon: "=" },
+  thought:     { color: "var(--text-secondary)", icon: "*" },
+  task:        { color: "var(--color-nominal)", icon: ">" },
+  message:     { color: "var(--color-info)", icon: "->" },
+  error:       { color: "var(--color-nominal-text)", icon: "!" },
+  tool_call:   { color: "var(--color-warning)", icon: "+" },
+  tool_result: { color: "var(--color-modify)", icon: "=" },
 };
 
 /** Short agent name labels. */
@@ -39,7 +39,7 @@ function formatTime(ts: string): string {
 
 /** Resolve style for an event type. */
 function getEventStyle(eventType: string): { color: string; icon: string } {
-  return EVENT_STYLE[eventType] ?? { color: "#888888", icon: "-" };
+  return EVENT_STYLE[eventType] ?? { color: "var(--text-dim)", icon: "-" };
 }
 
 /** Resolve short agent label. */

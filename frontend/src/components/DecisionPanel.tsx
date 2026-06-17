@@ -135,46 +135,14 @@ export function DecisionPanel(): React.ReactElement {
         padding: "var(--sp-2) var(--sp-3)",
       }}>
         {pending.length === 0 && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.5rem 0.5rem',
-            textAlign: 'center',
-            gap: '0.5rem',
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              border: '2px solid var(--border-bright)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.1rem',
-              color: 'var(--color-nominal)',
-              opacity: 0.4,
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'border-color var(--transition-fast), opacity var(--transition-fast)',
-            }}>✓</div>
-            <div style={{
-              fontSize: 'var(--fs-body)',
-              color: 'var(--text-dim)',
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 500,
-            }}>
+          <div className="atc-empty-state">
+            <div className="atc-empty-state-icon">✓</div>
+            <div className="atc-empty-state-title">
               {recent
                 ? `Last action: ${recent.action} (${recent.id.slice(-6)})`
                 : 'No pending decisions'}
             </div>
-            <div style={{
-              fontSize: 'var(--fs-micro)',
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-mono)',
-              lineHeight: 1.5,
-              maxWidth: '220px',
-            }}>
+            <div className="atc-empty-state-desc">
               Agent proposals requiring controller authority will appear here for your review.
             </div>
           </div>

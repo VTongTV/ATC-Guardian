@@ -136,6 +136,37 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/** Normalize plain-text numbered/bulleted lists into proper markdown.
+ *  Agents often write "1. Step one\n2. Step two" without the blank line
+ *  that markdown requires, causing ReactMarkdown to render them inline.
+ *  This function detects such patterns and adds the required newlines. */
+function normalizeMarkdownLists(text: string): string {
+  const lines = text.split("\n");
+  const result: string[] = [];
+  let inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isNumberedItem = /^\d+\.\s/.test(line);
+    const isBulletItem = /^[-*•]\s/.test(line);
+    const isListItem = isNumberedItem || isBulletItem;
+
+    if (isListItem && !inList) {
+      // Add blank line before first list item if previous line is not blank
+      if (result.length > 0 && result[result.length - 1].trim() !== "") {
+        result.push("");
+      }
+      inList = true;
+    } else if (!isListItem && inList) {
+      inList = false;
+    }
+
+    result.push(line);
+  }
+
+  return result.join("\n");
+}
+
 function formatTime(ts: string): string {
   try {
     const d = new Date(ts);
@@ -226,6 +257,79 @@ function extractStructuredFields(content: string): [StructuredField[], string] {
 }
 
 // ─── Mention Rendering ──────────────────────────────────────────────
+
+/** Collapsible message body — shows first 2 lines by default, expand on click. */
+function CollapsibleMessageBody({
+  children,
+  accent,
+}: {
+  children: ReactNode;
+  accent: string;
+}): React.ReactElement {
+  const [expanded, setExpanded] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isLong, setIsLong] = useState(false);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (el) {
+      // Check if content exceeds ~4 lines (line-height 1.65 × 13px ≈ 86px)
+      setIsLong(el.scrollHeight > 90);
+    }
+  }, [children]);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        ref={contentRef}
+        style={{
+          maxHeight: expanded ? "none" : "4.2em",
+          overflow: expanded ? "visible" : "hidden",
+          transition: "max-height var(--transition-med)",
+        }}
+      >
+        {children}
+      </div>
+      {isLong && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          aria-label={expanded ? "Collapse message" : "Expand full message"}
+          style={{
+            display: "block",
+            width: "100%",
+            padding: "4px 0",
+            marginTop: "2px",
+            background: "none",
+            border: "none",
+            color: accent,
+            fontSize: "var(--fs-micro)",
+            fontFamily: "var(--font-mono)",
+            cursor: "pointer",
+            textAlign: "center",
+            letterSpacing: "0.04em",
+            opacity: 0.7,
+            transition: "opacity var(--transition-fast)",
+          }}
+          onMouseEnter={(e) => { (e.target as HTMLElement).style.opacity = "1"; }}
+          onMouseLeave={(e) => { (e.target as HTMLElement).style.opacity = "0.7"; }}
+        >
+          {expanded ? "▾ COLLAPSE" : "▸ SHOW FULL"}
+        </button>
+      )}
+      {!expanded && isLong && (
+        <div style={{
+          position: "absolute",
+          bottom: "18px",
+          left: 0,
+          right: 0,
+          height: "24px",
+          background: "linear-gradient(0deg, var(--bg-deep) 20%, transparent 100%)",
+          pointerEvents: "none",
+        }} />
+      )}
+    </div>
+  );
+}
 
 /** Render text with @mentions as colored chips. */
 function renderMentionChips(
@@ -341,13 +445,22 @@ function markdownComponents(accent: string, uuidMap: Map<string, string>) {
       );
     },
     table: ({ children }: { children?: ReactNode }) => (
-      <div style={{ overflowX: "auto", margin: "0.4rem 0" }}>
+      <div style={{
+        overflowX: "auto",
+        margin: "0.4rem 0",
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--border-mid)",
+        backgroundColor: "rgba(0,0,0,0.15)",
+        WebkitOverflowScrolling: "touch",
+      }}>
         <table
           style={{
             borderCollapse: "collapse",
             width: "100%",
-            fontSize: "0.6rem",
-            color: "#ccc",
+            minWidth: "320px",
+            fontSize: "var(--fs-micro)",
+            color: "var(--text-body)",
+            whiteSpace: "nowrap",
           }}
         >
           {children}
@@ -357,11 +470,15 @@ function markdownComponents(accent: string, uuidMap: Map<string, string>) {
     th: ({ children }: { children?: ReactNode }) => (
       <th
         style={{
-          border: `1px solid ${withAlpha(accent, 0.4)}`,
-          padding: "0.15rem 0.3rem",
+          border: `1px solid ${withAlpha(accent, 0.35)}`,
+          padding: "4px 8px",
           textAlign: "left",
           color: accent,
           fontWeight: 600,
+          whiteSpace: "nowrap",
+          backgroundColor: withAlpha(accent, 0.1),
+          fontSize: "var(--fs-micro)",
+          letterSpacing: "0.03em",
         }}
       >
         {children}
@@ -370,8 +487,11 @@ function markdownComponents(accent: string, uuidMap: Map<string, string>) {
     td: ({ children }: { children?: ReactNode }) => (
       <td
         style={{
-          border: `1px solid ${withAlpha(accent, 0.25)}`,
-          padding: "0.15rem 0.3rem",
+          border: `1px solid ${withAlpha(accent, 0.2)}`,
+          padding: "4px 8px",
+          whiteSpace: "nowrap",
+          color: "var(--text-body)",
+          fontSize: "var(--fs-micro)",
         }}
       >
         {children}
@@ -533,21 +653,12 @@ export function AgentChatPanel(): React.ReactElement {
           </span>
         </div>
         {/* Per-agent filter */}
-        <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
           <button
             onClick={() => setFilterAgent("all")}
-            style={{
-              padding: "1px 6px",
-              borderRadius: "var(--radius-sm)",
-              border: `1px solid ${filterAgent === "all" ? "var(--color-nominal)" : "var(--border-mid)"}`,
-              backgroundColor: filterAgent === "all" ? "rgba(51,255,51,0.12)" : "transparent",
-              color: filterAgent === "all" ? "var(--color-nominal)" : "var(--text-dim)",
-              fontSize: "var(--fs-micro)",
-              fontFamily: "var(--font-mono)",
-              cursor: "pointer",
-              lineHeight: "1.4",
-              transition: "all var(--transition-fast)",
-            }}
+            className={`atc-filter-tab ${filterAgent === "all" ? "atc-filter-tab--active" : ""}`}
+            aria-pressed={filterAgent === "all"}
+            aria-label="Show all agent messages"
           >
             ALL
           </button>
@@ -558,23 +669,17 @@ export function AgentChatPanel(): React.ReactElement {
               <button
                 key={name}
                 onClick={() => setFilterAgent(isActive ? "all" : name)}
-                style={{
-                  padding: "1px 6px",
-                  borderRadius: "var(--radius-sm)",
-                  border: `1px solid ${isActive ? color : "var(--border-mid)"}`,
-                  backgroundColor: isActive ? withAlpha(color, 0.15) : "transparent",
-                  color: isActive ? color : "var(--text-dim)",
-                  fontSize: "var(--fs-micro)",
-                  fontFamily: "var(--font-mono)",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "2px",
-                  lineHeight: "1.4",
-                  transition: "all var(--transition-fast)",
-                }}
+                className={`atc-filter-tab ${isActive ? "atc-filter-tab--active" : ""}`}
+                style={isActive ? {
+                  backgroundColor: withAlpha(color, 0.18),
+                  borderColor: color,
+                  color: color,
+                  boxShadow: `0 0 6px ${withAlpha(color, 0.15)}`,
+                } : undefined}
+                aria-pressed={isActive}
+                aria-label={`Filter by ${agentLabel(name)}`}
               >
-                <span style={{ fontSize: "0.5rem" }}>{agentIcon(name)}</span>
+                <span style={{ fontSize: "10px" }}>{agentIcon(name)}</span>
                 {agentShort(name)}
               </button>
             );
@@ -582,7 +687,7 @@ export function AgentChatPanel(): React.ReactElement {
         </div>
       </div>
 
-      {/* Message list */}
+      {/* Message list — scrollable area with padding for footer */}
       <div
         ref={listRef}
         onScroll={handleScroll}
@@ -590,24 +695,20 @@ export function AgentChatPanel(): React.ReactElement {
           flex: 1,
           overflowY: "auto",
           padding: "var(--sp-2) var(--sp-3)",
+          paddingBottom: showJumpToLatest ? "44px" : "var(--sp-2)",
           display: "flex",
           flexDirection: "column",
           gap: "var(--sp-2)",
+          transition: "padding-bottom var(--transition-fast)",
         }}
       >
         {filteredMessages.length === 0 ? (
-          <div style={{
-            color: "var(--text-dim)",
-            fontSize: "var(--fs-meta)",
-            fontFamily: "var(--font-mono)",
-            padding: "var(--sp-4) var(--sp-3)",
-            lineHeight: 1.6,
-            fontStyle: "italic",
-            textAlign: "center",
-          }}>
-            <div style={{ fontSize: '1.2rem', marginBottom: 'var(--sp-2)' }}>📡</div>
-            No agent messages yet.<br />
-            Agent communications will appear here as they collaborate on the active scenario.
+          <div className="atc-empty-state">
+            <div className="atc-empty-state-icon">📡</div>
+            <div className="atc-empty-state-title">No agent messages yet</div>
+            <div className="atc-empty-state-desc">
+              Agent communications will appear here as they collaborate on the active scenario.
+            </div>
           </div>
         ) : null}
 
@@ -637,14 +738,14 @@ export function AgentChatPanel(): React.ReactElement {
                 transition: "box-shadow var(--transition-fast), background-color var(--transition-fast)",
               }}
             >
-              {/* Sender header row */}
+              {/* Sender header row — Tier 1: routing metadata */}
               <div style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                padding: "5px 8px",
+                padding: "6px 10px",
                 backgroundColor: withAlpha(fromColor, 0.08),
-                borderBottom: `1px solid ${withAlpha(fromColor, 0.1)}`,
+                borderBottom: `1px solid ${withAlpha(fromColor, 0.12)}`,
               }}>
                 {/* Avatar icon */}
                 <span style={{
@@ -666,28 +767,26 @@ export function AgentChatPanel(): React.ReactElement {
                 <span style={{
                   color: fromColor,
                   fontWeight: 700,
-                  fontSize: "0.62rem",
+                  fontSize: "var(--fs-micro)",
                   letterSpacing: "0.02em",
                 }}>
                   {agentLabel(fromHandle)}
                 </span>
-                {/* Message type badge */}
-                <span style={{
-                  marginLeft: "auto",
-                  fontSize: "0.5rem",
-                  color: typeColor,
-                  padding: "1px 5px",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: withAlpha(typeColor, 0.12),
-                  border: `1px solid ${withAlpha(typeColor, 0.3)}`,
-                  letterSpacing: "0.03em",
-                  whiteSpace: "nowrap",
-                }}>
+                {/* Message type badge — severity-weighted */}
+                <span
+                  className={`atc-severity-badge ${
+                    msgType === "warning" ? "atc-severity-badge--critical" :
+                    msgType === "escalation" ? "atc-severity-badge--warning" :
+                    msgType === "advisory" ? "atc-severity-badge--caution" :
+                    "atc-severity-badge--info"
+                  }`}
+                  style={{ marginLeft: "auto" }}
+                >
                   {typeLabel}
                 </span>
                 {/* Timestamp */}
                 <span style={{
-                  fontSize: "0.5rem",
+                  fontSize: "var(--fs-micro)",
                   color: "var(--text-dim)",
                   whiteSpace: "nowrap",
                 }}>
@@ -695,7 +794,7 @@ export function AgentChatPanel(): React.ReactElement {
                 </span>
               </div>
 
-              {/* Structured data chips */}
+              {/* Structured data chips — Tier 2: parsed fields */}
               {fields.length > 0 && (
                 <div style={{
                   display: 'flex',
@@ -708,7 +807,7 @@ export function AgentChatPanel(): React.ReactElement {
                   {fields.map((f, i) => (
                     <div key={i} style={{
                       display: 'inline-flex',
-                      fontSize: '0.55rem',
+                      fontSize: 'var(--fs-micro)',
                       borderRadius: 'var(--radius-sm)',
                       border: `1px solid ${withAlpha(fromColor, 0.3)}`,
                       overflow: 'hidden',
@@ -732,61 +831,72 @@ export function AgentChatPanel(): React.ReactElement {
                 </div>
               )}
 
-              {/* Message body — always render content */}
-              <div className="atc-msg-body" style={{
-                padding: '8px 10px 10px',
-                color: 'var(--text-body)',
-                lineHeight: 1.6,
-                fontSize: '0.65rem',
-                whiteSpace: 'normal',
-                wordBreak: 'break-word',
-                overflowWrap: 'break-word',
-              }}>
-                {freeText ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={componentsCache(fromColor)}
-                  >
-                    {freeText}
-                  </ReactMarkdown>
-                ) : (
-                  <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                    {evt.content.slice(0, 200)}
-                  </span>
-                )}
-              </div>
+              {/* Message body — Tier 3: free-text content */}
+              <CollapsibleMessageBody accent={fromColor}>
+                <div className="atc-msg-body" style={{
+                  padding: '8px 10px 10px',
+                  color: 'var(--text-body)',
+                  fontSize: 'var(--fs-body)',
+                  lineHeight: 1.65,
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                }}>
+                  {freeText ? (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={componentsCache(fromColor)}
+                    >
+                      {normalizeMarkdownLists(freeText)}
+                    </ReactMarkdown>
+                  ) : (
+                    <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                      {evt.content.slice(0, 200)}
+                    </span>
+                  )}
+                </div>
+              </CollapsibleMessageBody>
             </div>
           );
         })}
       </div>
 
-      {/* Jump to latest button */}
-      {showJumpToLatest && (
+      {/* Jump to latest — sticky footer bar, never overlaps content */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 0,
+          display: "flex",
+          justifyContent: "center",
+          padding: "6px 0",
+          background: "linear-gradient(0deg, var(--bg-deep) 60%, transparent 100%)",
+          pointerEvents: showJumpToLatest ? "auto" : "none",
+          opacity: showJumpToLatest ? 1 : 0,
+          transition: "opacity var(--transition-fast)",
+          zIndex: 10,
+          flexShrink: 0,
+        }}
+      >
         <button
           onClick={jumpToLatest}
+          aria-label="Scroll to latest messages"
           style={{
-            position: "absolute",
-            bottom: "var(--sp-4)",
-            left: "50%",
-            transform: "translateX(-50%)",
-            padding: "var(--sp-1) var(--sp-4)",
+            padding: "5px 14px",
             backgroundColor: "var(--bg-raised)",
             border: "1px solid var(--color-nominal)",
             borderRadius: "var(--radius-lg)",
             color: "var(--color-nominal)",
-            fontSize: "var(--fs-meta)",
+            fontSize: "var(--fs-micro)",
             fontFamily: "var(--font-mono)",
             cursor: "pointer",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.4), 0 0 8px rgba(51, 255, 51, 0.1)",
-            animation: "fade-in-up 0.2s ease-out",
-            zIndex: 10,
+            boxShadow: "0 2px 10px rgba(0,0,0,0.4), 0 0 8px rgba(51, 255, 51, 0.12)",
             letterSpacing: "0.04em",
             transition: "box-shadow var(--transition-fast), background-color var(--transition-fast)",
           }}
         >
           ↓ JUMP TO LATEST
         </button>
-      )}
+      </div>
     </div>
   );
 }
