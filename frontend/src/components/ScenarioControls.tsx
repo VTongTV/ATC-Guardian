@@ -154,63 +154,81 @@ export function ScenarioControls(): React.ReactElement {
     [setActiveScenario],
   );
 
-  const panelStyle: React.CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-    backgroundColor: "#0a0a0a",
-    padding: "0.5rem",
-    borderBottom: "1px solid #1a3a1a",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: "0.65rem",
-    color: "#888",
-    letterSpacing: "0.05em",
-  };
-
-  const selectStyle: React.CSSProperties = {
-    backgroundColor: "#111",
-    color: "#33ff33",
-    border: "1px solid #1a3a1a",
-    fontFamily: "monospace",
-    fontSize: "0.7rem",
-    padding: "0.25rem",
-    width: "100%",
-    outline: "none",
-  };
-
-  const statRowStyle: React.CSSProperties = {
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: "0.65rem",
-    color: "#888",
-  };
+  const activeScenario = SCENARIOS.find((s) => s.id === activeScenarioId);
 
   return (
-    <div style={panelStyle}>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "0.6rem",
+      backgroundColor: "var(--bg-deep)",
+      padding: "0.6rem",
+      borderBottom: "1px solid var(--border-mid)",
+      fontFamily: "var(--font-mono)",
+    }}>
       {/* Header */}
-      <div style={{ ...labelStyle, color: "#33ff33", fontSize: "0.7rem" }}>
-        SCENARIO
+      <div className="atc-panel-header">
+        <span className="atc-panel-title">SCENARIO</span>
       </div>
 
       {/* Scenario dropdown */}
-      <select
-        style={selectStyle}
-        value={activeScenarioId}
-        onChange={handleScenarioChange}
-        disabled={switching}
-      >
-        {SCENARIOS.map((sc) => (
-          <option key={sc.id} value={sc.id}>
-            {sc.id} — {sc.label}
-          </option>
-        ))}
-      </select>
+      <div style={{ position: "relative" }}>
+        <select
+          style={{
+            backgroundColor: "var(--bg-surface)",
+            color: "var(--color-nominal)",
+            border: "1px solid var(--border-bright)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "var(--fs-body)",
+            borderRadius: "4px",
+            padding: "0.4rem 0.5rem",
+            width: "100%",
+            outline: "none",
+            cursor: "pointer",
+            appearance: "none" as const,
+            WebkitAppearance: "none" as const,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2333ff33'/%3E%3C/svg%3E")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 0.5rem center",
+            backgroundSize: "10px 6px",
+            paddingRight: "1.6rem",
+            transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+          }}
+          value={activeScenarioId}
+          onChange={handleScenarioChange}
+          disabled={switching}
+          onFocus={(e) => {
+            e.target.style.borderColor = "var(--color-nominal)";
+            e.target.style.boxShadow = "0 0 8px rgba(51, 255, 51, 0.15)";
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = "var(--border-bright)";
+            e.target.style.boxShadow = "none";
+          }}
+        >
+          {SCENARIOS.map((sc) => (
+            <option key={sc.id} value={sc.id}>
+              {sc.id} — {sc.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Scenario description */}
-      <div style={{ fontSize: "0.6rem", color: "#888", padding: "0.2rem 0", lineHeight: 1.4 }}>
-        {SCENARIOS.find((s) => s.id === activeScenarioId)?.description ?? "Select a scenario."}
+      <div style={{
+        fontSize: "var(--fs-meta)",
+        color: "var(--text-secondary)",
+        lineHeight: 1.55,
+        borderLeft: "2px solid var(--color-nominal)",
+        paddingLeft: "0.5rem",
+        fontFamily: "var(--font-mono)",
+        backgroundColor: "rgba(51, 255, 51, 0.03)",
+        padding: "0.4rem 0.5rem",
+        borderRadius: "0 4px 4px 0",
+      }}>
+        <span style={{ color: "var(--color-nominal)", fontWeight: 600 }}>{activeScenario?.id}</span>
+        <span style={{ color: "var(--text-dim)", margin: "0 0.3rem" }}>—</span>
+        {activeScenario?.description ?? "Select a scenario."}
       </div>
 
       {/* Guided demo button */}
@@ -218,32 +236,89 @@ export function ScenarioControls(): React.ReactElement {
         type="button"
         onClick={startGuidedDemo}
         style={{
-          backgroundColor: demoPlaying ? "#3a1a1a" : "#1a3a1a",
-          color: demoPlaying ? "#ff3333" : "#33ff33",
-          border: `1px solid ${demoPlaying ? "#ff3333" : "#33ff33"}`,
-          fontFamily: "monospace",
-          fontSize: "0.65rem",
-          padding: "0.3rem",
+          backgroundColor: demoPlaying ? "rgba(255, 51, 51, 0.12)" : "rgba(51, 255, 51, 0.08)",
+          color: demoPlaying ? "var(--color-critical)" : "var(--color-nominal)",
+          border: `1px solid ${demoPlaying ? "var(--color-critical)" : "var(--color-nominal)"}`,
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--fs-body)",
+          fontWeight: 600,
+          borderRadius: "4px",
+          padding: "0.45rem 0.6rem",
           cursor: "pointer",
-          letterSpacing: "0.05em",
+          letterSpacing: "0.08em",
+          transition: "all 0.2s ease",
+          boxShadow: demoPlaying
+            ? "0 0 12px rgba(255, 51, 51, 0.2), inset 0 0 20px rgba(255, 51, 51, 0.05)"
+            : "0 0 12px rgba(51, 255, 51, 0.15), inset 0 0 20px rgba(51, 255, 51, 0.03)",
+        }}
+        onMouseEnter={(e) => {
+          if (!demoPlaying) {
+            e.currentTarget.style.backgroundColor = "rgba(51, 255, 51, 0.14)";
+            e.currentTarget.style.boxShadow = "0 0 16px rgba(51, 255, 51, 0.25), inset 0 0 24px rgba(51, 255, 51, 0.06)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!demoPlaying) {
+            e.currentTarget.style.backgroundColor = "rgba(51, 255, 51, 0.08)";
+            e.currentTarget.style.boxShadow = "0 0 12px rgba(51, 255, 51, 0.15), inset 0 0 20px rgba(51, 255, 51, 0.03)";
+          }
         }}
       >
-        {demoPlaying ? "■ STOP DEMO" : "▶ PLAY GUIDED DEMO"}
+        {demoPlaying ? "■  STOP DEMO" : "▶  PLAY GUIDED DEMO"}
       </button>
+
+      {/* Narration */}
       {narration && (
-        <div style={{ fontSize: "0.6rem", color: "#ffaa00", padding: "0.2rem", borderLeft: "2px solid #ffaa00" }}>
+        <div style={{
+          fontSize: "var(--fs-meta)",
+          color: "var(--color-warning)",
+          padding: "0.4rem 0.5rem",
+          borderLeft: "2px solid var(--color-warning)",
+          backgroundColor: "rgba(255, 170, 0, 0.06)",
+          borderRadius: "0 4px 4px 0",
+          fontFamily: "var(--font-mono)",
+          lineHeight: 1.5,
+        }}>
           {narration}
         </div>
       )}
 
       {/* Status indicators */}
-      <div style={statRowStyle}>
-        <span>ELAPSED</span>
-        <span style={{ color: "#33ff33" }}>T+{Math.round(elapsedSeconds)}s</span>
-      </div>
-      <div style={statRowStyle}>
-        <span>AIRCRAFT</span>
-        <span style={{ color: "#33ff33" }}>{aircraftCount}</span>
+      <div style={{
+        display: "flex",
+        gap: "0.5rem",
+        marginTop: "0.1rem",
+      }}>
+        <div style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "0.35rem 0.4rem",
+          backgroundColor: "var(--bg-surface)",
+          border: "1px solid var(--border-dim)",
+          borderRadius: "4px",
+        }}>
+          <span style={{ color: "var(--text-dim)", fontSize: "var(--fs-micro)", letterSpacing: "0.06em" }}>ELAPSED</span>
+          <span style={{ color: "var(--color-nominal)", fontWeight: 700, fontSize: "var(--fs-body)" }}>
+            T+{Math.round(elapsedSeconds)}s
+          </span>
+        </div>
+        <div style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "0.35rem 0.4rem",
+          backgroundColor: "var(--bg-surface)",
+          border: "1px solid var(--border-dim)",
+          borderRadius: "4px",
+        }}>
+          <span style={{ color: "var(--text-dim)", fontSize: "var(--fs-micro)", letterSpacing: "0.06em" }}>AIRCRAFT</span>
+          <span style={{ color: "var(--color-nominal)", fontWeight: 700, fontSize: "var(--fs-body)" }}>
+            {aircraftCount}
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -44,6 +44,17 @@ function formatTime(ts: string): string {
   }
 }
 
+/** Convert a hex colour to rgba with alpha. */
+function withAlpha(hex: string, alpha: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /** DecisionPanel — pending controller decisions with action controls. */
 export function DecisionPanel(): React.ReactElement {
   const [pending, setPending] = useState<ControllerDecision[]>([]);
@@ -92,44 +103,76 @@ export function DecisionPanel(): React.ReactElement {
     [fetchPending],
   );
 
-  const panelStyle: React.CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-    backgroundColor: "#0a0a0a",
-    overflow: "hidden",
-  };
-
-  const headerStyle: React.CSSProperties = {
-    fontSize: "0.7rem",
-    color: "#33ff33",
-    padding: "0.3rem 0.5rem",
-    borderBottom: "1px solid #1a3a1a",
-    flexShrink: 0,
-    letterSpacing: "0.05em",
-    display: "flex",
-    justifyContent: "space-between",
-  };
-
-  const listStyle: React.CSSProperties = {
-    overflowY: "auto",
-    padding: "0.25rem 0.5rem",
-  };
-
   return (
-    <div style={panelStyle}>
-      <div style={headerStyle}>
-        <span>CONTROLLER DECISIONS</span>
-        <span style={{ color: pending.length > 0 ? "#ffaa00" : "#555" }}>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      backgroundColor: "var(--bg-deep)",
+      fontFamily: "var(--font-mono)",
+      overflow: "hidden",
+    }}>
+      <div className="atc-panel-header">
+        <span className="atc-panel-title">CONTROLLER DECISIONS</span>
+        <span style={{
+          padding: '0.15rem 0.5rem',
+          borderRadius: '10px',
+          fontSize: 'var(--fs-micro)',
+          fontWeight: 700,
+          fontFamily: 'var(--font-mono)',
+          backgroundColor: pending.length > 0 ? 'rgba(255, 170, 0, 0.15)' : 'rgba(51, 255, 51, 0.06)',
+          color: pending.length > 0 ? '#ffaa00' : 'var(--color-nominal)',
+          border: pending.length > 0 ? '1px solid rgba(255, 170, 0, 0.35)' : '1px solid rgba(51, 255, 51, 0.2)',
+          letterSpacing: '0.04em',
+        }}>
           {pending.length} PENDING
         </span>
       </div>
-      <div style={listStyle}>
+      <div style={{
+        overflowY: "auto",
+        padding: "var(--sp-2) var(--sp-3)",
+      }}>
         {pending.length === 0 && (
-          <div style={{ fontSize: "0.6rem", color: "#555", padding: "0.3rem" }}>
-            {recent
-              ? `Last: ${recent.action} (${recent.id.slice(-6)})`
-              : "No pending decisions. Agents will surface proposals here."}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem 0.5rem',
+            textAlign: 'center',
+            gap: '0.5rem',
+          }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              border: '2px solid var(--border-bright)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1rem',
+              color: 'var(--color-nominal)',
+              opacity: 0.5,
+            }}>✓</div>
+            <div style={{
+              fontSize: 'var(--fs-body)',
+              color: 'var(--text-dim)',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 500,
+            }}>
+              {recent
+                ? `Last action: ${recent.action} (${recent.id.slice(-6)})`
+                : 'No pending decisions'}
+            </div>
+            <div style={{
+              fontSize: 'var(--fs-micro)',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+              lineHeight: 1.5,
+              maxWidth: '220px',
+            }}>
+              Agent proposals requiring controller authority will appear here for your review.
+            </div>
           </div>
         )}
         {pending.map((d) => {
@@ -140,51 +183,81 @@ export function DecisionPanel(): React.ReactElement {
               key={d.decision_id}
               style={{
                 borderLeft: `3px solid ${accent}`,
-                backgroundColor: "#111",
-                padding: "0.3rem",
-                marginBottom: "0.25rem",
+                borderRadius: '0 6px 6px 0',
+                backgroundColor: withAlpha(accent, 0.04),
+                padding: "0.5rem",
+                marginBottom: "0.5rem",
                 fontSize: "0.62rem",
+                fontFamily: 'var(--font-mono)',
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: accent, fontWeight: "bold" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: 'center', marginBottom: "0.3rem" }}>
+                <span style={{
+                  padding: '0.1rem 0.4rem',
+                  borderRadius: '4px',
+                  fontSize: '0.5rem',
+                  fontWeight: 700,
+                  backgroundColor: withAlpha(accent, 0.15),
+                  color: accent,
+                  border: `1px solid ${withAlpha(accent, 0.35)}`,
+                  letterSpacing: '0.04em',
+                }}>
                   {KIND_LABEL[d.advisory_kind] ?? d.advisory_kind.toUpperCase()}
                 </span>
-                <span style={{ color: "#555" }}>{formatTime(d.created_at)}</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-micro)' }}>{formatTime(d.created_at)}</span>
               </div>
-              <div style={{ color: "#ccc", margin: "0.15rem 0" }}>{d.summary}</div>
-              <div style={{ color: "#888", marginBottom: "0.1rem" }}>
-                <span style={{ color: "#4488ff" }}>Agent:</span>{" "}
+              <div style={{
+                color: 'var(--text-primary)',
+                marginBottom: "0.35rem",
+                lineHeight: 1.5,
+                fontWeight: 500,
+              }}>{d.summary}</div>
+              <div style={{
+                color: 'var(--text-secondary)',
+                marginBottom: "0.2rem",
+                padding: "0.2rem 0.3rem",
+                backgroundColor: "rgba(68, 136, 255, 0.06)",
+                borderRadius: "3px",
+                borderLeft: "2px solid var(--accent-blue)",
+              }}>
+                <span style={{ color: 'var(--accent-blue)', fontWeight: 600, fontSize: 'var(--fs-micro)' }}>AGENT:</span>{" "}
                 {d.agent_recommendation}
               </div>
-              <div style={{ color: "#888", marginBottom: "0.2rem" }}>
-                <span style={{ color: "#33ff33" }}>Reviewer:</span>{" "}
+              <div style={{
+                color: 'var(--text-secondary)',
+                marginBottom: "0.35rem",
+                padding: "0.2rem 0.3rem",
+                backgroundColor: "rgba(51, 255, 51, 0.04)",
+                borderRadius: "3px",
+                borderLeft: "2px solid var(--color-nominal)",
+              }}>
+                <span style={{ color: 'var(--color-nominal)', fontWeight: 600, fontSize: 'var(--fs-micro)' }}>REVIEWER:</span>{" "}
                 {d.reviewer_verdict}
               </div>
-              <div style={{ display: "flex", gap: "0.25rem" }}>
+              <div style={{ display: "flex", gap: "0.3rem" }}>
                 <button
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "APPROVED" })}
-                  style={btnStyle("#1a3a1a", "#33ff33")}
+                  style={btnStyle("#0a1a0a", "#33ff33", "rgba(51, 255, 51, 0.2)")}
                 >
-                  APPROVE
+                  {isBusy ? "..." : "APPROVE"}
                 </button>
                 <button
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "MODIFIED" })}
-                  style={btnStyle("#3a3a1a", "#ffaa00")}
+                  style={btnStyle("#1a1a0a", "#ffaa00", "rgba(255, 170, 0, 0.2)")}
                 >
-                  MODIFY
+                  {isBusy ? "..." : "MODIFY"}
                 </button>
                 <button
                   type="button"
                   disabled={isBusy}
                   onClick={() => resolve(d.decision_id, { action: "REJECTED" })}
-                  style={btnStyle("#3a1a1a", "#ff3333")}
+                  style={btnStyle("#1a0a0a", "#ff3333", "rgba(255, 51, 51, 0.2)")}
                 >
-                  REJECT
+                  {isBusy ? "..." : "REJECT"}
                 </button>
               </div>
             </div>
@@ -196,16 +269,19 @@ export function DecisionPanel(): React.ReactElement {
 }
 
 /** Build a button style with the given bg/text colours. */
-function btnStyle(bg: string, color: string): React.CSSProperties {
+function btnStyle(bg: string, color: string, hoverBg: string): React.CSSProperties {
   return {
     flex: 1,
     backgroundColor: bg,
     color,
     border: `1px solid ${color}`,
-    padding: "0.2rem",
-    fontSize: "0.6rem",
-    fontFamily: "monospace",
+    borderRadius: '4px',
+    padding: "0.3rem",
+    fontSize: "0.58rem",
+    fontFamily: "var(--font-mono)",
+    fontWeight: 700,
     cursor: "pointer",
-    letterSpacing: "0.05em",
+    letterSpacing: "0.06em",
+    transition: 'all 0.15s ease',
   };
 }

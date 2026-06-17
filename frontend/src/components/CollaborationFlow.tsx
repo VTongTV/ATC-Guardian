@@ -40,6 +40,28 @@ const FRAMEWORK_COLORS: Record<string, string> = {
   "CrewAI": "#1abc9c",
 };
 
+/** Role icon per agent handle. */
+const AGENT_ICONS: Record<string, string> = {
+  coordinator: '🎯',
+  'conflict-detector': '⚠️',
+  'weather-analyst': '🌩️',
+  'ground-ops': '✈️',
+  'emergency-response': '🚨',
+  'safety-reviewer': '🛡️',
+  'system-ingest': '📡',
+};
+
+/** Convert a hex colour to rgba with the given alpha. */
+function withAlpha(hex: string, alpha: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /** Inject a one-shot CSS keyframe for the flash animation. */
 let _styleInjected = false;
 function injectFlashKeyframes(): void {
@@ -53,6 +75,10 @@ function injectFlashKeyframes(): void {
       100% { box-shadow: 0 0 0px transparent; }
     }
     .agent-flash { animation: agentFlash 1.2s ease-out; }
+    @keyframes pulse-live {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.35; }
+    }
   `;
   document.head.appendChild(sheet);
 }
@@ -116,29 +142,28 @@ export function CollaborationFlow(): React.ReactElement {
     display: "flex",
     flexDirection: "column",
     height: "100%",
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "var(--bg-deep)",
+    fontFamily: "var(--font-mono)",
     overflow: "hidden",
-  };
-
-  const headerStyle: React.CSSProperties = {
-    fontSize: "0.7rem",
-    color: "#33ff33",
-    padding: "0.3rem 0.5rem",
-    borderBottom: "1px solid #1a3a1a",
-    flexShrink: 0,
-    letterSpacing: "0.05em",
-    display: "flex",
-    justifyContent: "space-between",
   };
 
   return (
     <div style={panelStyle}>
-      <div style={headerStyle}>
-        <span>AGENT TEAM</span>
-        <span style={{ color: "#888", fontSize: "0.6rem" }}>
-          {Object.entries(frameworks)
-            .map(([fw, n]) => `${fw}×${n}`)
-            .join(" · ")}
+      <div className="atc-panel-header" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.2rem' }}>
+        <span className="atc-panel-title">AGENT TEAM</span>
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.15rem', marginLeft: 'auto' }}>
+          {Object.entries(frameworks).map(([fw, n]) => (
+            <span key={fw} style={{
+              padding: '0.05rem 0.3rem',
+              borderRadius: '6px',
+              fontSize: '0.5rem',
+              backgroundColor: withAlpha(FRAMEWORK_COLORS[fw] ?? '#888', 0.15),
+              color: FRAMEWORK_COLORS[fw] ?? '#888',
+              border: `1px solid ${withAlpha(FRAMEWORK_COLORS[fw] ?? '#888', 0.3)}`,
+            }}>
+              {fw} ×{n}
+            </span>
+          ))}
         </span>
       </div>
       <div
@@ -161,34 +186,73 @@ export function CollaborationFlow(): React.ReactElement {
               title={node.framework_note}
               className={isFlashing ? "agent-flash" : undefined}
               style={{
-                border: `1px solid ${isActive ? node.colour : "#222"}`,
+                border: `1px solid ${isActive ? node.colour : 'var(--border-mid)'}`,
                 borderLeft: `3px solid ${node.colour}`,
-                backgroundColor: isActive ? "#0f1a0f" : "#0d0d0d",
-                padding: "0.25rem",
-                fontSize: "0.6rem",
-                position: "relative",
+                backgroundColor: isActive ? 'var(--bg-surface)' : 'var(--bg-mid)',
+                borderRadius: '4px',
+                padding: '0.4rem 0.5rem 0.35rem',
+                fontSize: '0.6rem',
+                position: 'relative',
+                overflow: 'visible',
                 ["--flash-colour" as string]: node.colour,
               } as React.CSSProperties}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ color: node.colour, fontWeight: "bold" }}>
+              {/* Status dot — top-right corner */}
+              <span style={{
+                position: 'absolute',
+                top: '0.35rem',
+                right: '0.35rem',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: isActive ? '#33ff33' : '#333',
+                display: 'inline-block',
+                boxShadow: isActive ? '0 0 4px #33ff33' : 'none',
+                animation: isActive ? 'pulse-live 2s ease-in-out infinite' : 'none',
+              }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span style={{ fontSize: '0.7rem' }}>
+                  {AGENT_ICONS[node.name] ?? '🤖'}
+                </span>
+                <span style={{ color: node.colour, fontWeight: 'bold' }}>
                   {node.label}
                 </span>
                 {activity > 0 && (
-                  <span style={{ color: "#33ff33", fontSize: "0.55rem" }}>
-                    ●{activity}
+                  <span style={{
+                    color: '#33ff33',
+                    fontSize: '0.55rem',
+                    marginLeft: 'auto',
+                    padding: '0 4px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(51,255,51,0.1)',
+                    border: '1px solid rgba(51,255,51,0.2)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {activity}
                   </span>
                 )}
               </div>
-              <div
-                style={{
+              <div style={{ marginTop: '0.15rem' }}>
+                <span style={{
+                  display: 'inline-block',
+                  padding: '0.08rem 0.35rem',
+                  borderRadius: '8px',
+                  fontSize: '0.5rem',
+                  fontWeight: 500,
+                  backgroundColor: withAlpha(fwColour, 0.12),
                   color: fwColour,
-                  fontSize: "0.55rem",
-                  marginTop: "0.1rem",
-                }}
-              >
-                {node.framework}
+                  border: `1px solid ${withAlpha(fwColour, 0.3)}`,
+                  letterSpacing: '0.02em',
+                  marginTop: '0.15rem',
+                }}>
+                  {node.framework}
+                </span>
               </div>
+              {node.role && (
+                <div style={{ color: 'var(--text-dim)', fontSize: '0.5rem', marginTop: '0.15rem' }}>
+                  {node.role}
+                </div>
+              )}
             </div>
           );
         })}

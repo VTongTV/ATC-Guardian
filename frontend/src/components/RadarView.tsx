@@ -14,13 +14,14 @@ import {
   TileLayer,
   Marker,
   Polyline,
+  Polygon,
   Circle,
   Tooltip,
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useAtcStore } from "../stores/atcStore";
-import type { AircraftState, ConflictAdvisory } from "../lib/types";
+import type { AircraftState, ConflictAdvisory, WeatherAdvisory } from "../lib/types";
 import {
   COLOR_NORMAL,
   COLOR_7700,
@@ -105,68 +106,83 @@ function formatVerticalSpeed(fpm: number): string {
 
 // ─── Icon Factories ─────────────────────────────────────────────────
 
-/** Create a small colored circle marker using L.divIcon. */
-function createAircraftIcon(color: string, size: number = 10): L.DivIcon {
+/** Create a heading-rotated aircraft silhouette marker using L.divIcon. */
+function createAircraftIcon(color: string, headingDeg: number, size: number = 14): L.DivIcon {
   return L.divIcon({
     className: "",
     html: `<div style="
       width:${size}px;
       height:${size}px;
-      background:${color};
-      border:1.5px solid #ffffff;
-      border-radius:50%;
-      box-shadow:0 0 6px ${color}80;
-    "></div>`,
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      filter: drop-shadow(0 0 4px ${color}88) drop-shadow(0 0 8px ${color}44);
+    "><svg width="${size}" height="${size}" viewBox="0 0 24 24" style="
+      transform:rotate(${headingDeg}deg);
+    "><path d="M12 2 L14 8 L20 10 L14 12 L14 18 L17 20 L17 21 L12 19 L7 21 L7 20 L10 18 L10 12 L4 10 L10 8 Z" fill="${color}" opacity="0.95" stroke="${color}" stroke-width="0.3"/></svg></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
 }
 
-/** Create a selected-aircraft icon with a white highlight ring. */
-function createSelectedIcon(color: string, size: number = 12): L.DivIcon {
+/** Create a selected-aircraft icon with a heading-rotated plane and selection ring. */
+function createSelectedIcon(color: string, headingDeg: number, size: number = 18): L.DivIcon {
+  const ringSize = size + 10;
   return L.divIcon({
     className: "",
     html: `<div style="
-      width:${size + 10}px;
-      height:${size + 10}px;
+      width:${ringSize}px;
+      height:${ringSize}px;
       display:flex;
       align-items:center;
       justify-content:center;
+      position:relative;
     "><div style="
-      width:${size + 10}px;
-      height:${size + 10}px;
+      width:${ringSize}px;
+      height:${ringSize}px;
       border:2px solid ${COLOR_SELECTED_RING};
       border-radius:50%;
       position:absolute;
       top:0;left:0;
       box-shadow:0 0 10px ${COLOR_SELECTED_RING}66;
-    "></div><div style="
-      width:${size}px;
-      height:${size}px;
-      background:${color};
-      border:1.5px solid #ffffff;
-      border-radius:50%;
-      box-shadow:0 0 8px ${color}aa;
+    "></div><svg width="${size}" height="${size}" viewBox="0 0 24 24" style="
+      transform:rotate(${headingDeg}deg);
       position:relative;
       z-index:1;
-    "></div></div>`,
-    iconSize: [size + 10, size + 10],
-    iconAnchor: [(size + 10) / 2, (size + 10) / 2],
+      filter: drop-shadow(0 0 6px ${color}aa) drop-shadow(0 0 10px ${color}66);
+    "><path d="M12 2 L14 8 L20 10 L14 12 L14 18 L17 20 L17 21 L12 19 L7 21 L7 20 L10 18 L10 12 L4 10 L10 8 Z" fill="${color}" opacity="0.95" stroke="${color}" stroke-width="0.3"/></svg></div>`,
+    iconSize: [ringSize, ringSize],
+    iconAnchor: [ringSize / 2, ringSize / 2],
   });
 }
 
-/** Create an arrowhead SVG marker for heading line tips. */
-function createArrowheadIcon(color: string, headingDeg: number): L.DivIcon {
-  const size = 8;
-  return L.divIcon({
-    className: "",
-    html: `<svg width="${size}" height="${size}" viewBox="0 0 8 8" style="
-      transform:rotate(${headingDeg}deg);
-      filter:drop-shadow(0 0 3px ${color}88);
-    "><polygon points="4,0 8,8 0,8" fill="${color}" opacity="0.8" /></svg>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
+/** Compute arrowhead polygon points for a heading line tip.
+ *  Returns 3 [lat,lng] coordinates forming a triangle with the tip at
+ *  the heading line endpoint, pointing in the heading direction. */
+function computeArrowheadPoints(
+  tipLat: number,
+  tipLng: number,
+  headingDeg: number,
+  lengthNm: number = 0.5,
+  halfWidthNm: number = 0.25,
+): [number, number][] {
+  const brng = headingDeg * Math.PI / 180;
+  const cosLat = Math.cos(tipLat * Math.PI / 180);
+
+  // Base center: 'lengthNm' behind the tip along the heading
+  const backLat = tipLat - (lengthNm / EARTH_RADIUS_NM) * Math.cos(brng) * (180 / Math.PI);
+  const backLng = tipLng - (lengthNm / EARTH_RADIUS_NM) * Math.sin(brng) / cosLat * (180 / Math.PI);
+
+  // Perpendicular direction for the base wings
+  const perp = brng + Math.PI / 2;
+  const dLat = (halfWidthNm / EARTH_RADIUS_NM) * Math.cos(perp) * (180 / Math.PI);
+  const dLng = (halfWidthNm / EARTH_RADIUS_NM) * Math.sin(perp) / cosLat * (180 / Math.PI);
+
+  return [
+    [tipLat, tipLng],
+    [backLat + dLat, backLng + dLng],
+    [backLat - dLat, backLng - dLng],
+  ];
 }
 
 /** Create a range-ring distance label at the 12-o'clock position. */
@@ -174,7 +190,7 @@ function createRangeRingLabel(nm: number): L.DivIcon {
   return L.divIcon({
     className: "",
     html: `<div style="
-      font-family:monospace;
+      font-family:var(--font-mono);
       font-size:10px;
       color:${COLOR_RANGE_RING_LABEL};
       white-space:nowrap;
@@ -210,6 +226,10 @@ function useEmergencyBlinkStyles(): void {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.25; }
       }
+      @keyframes pulse-hazard {
+        0%, 100% { opacity: 0.35; }
+        50% { opacity: 0.12; }
+      }
       .atc-blink-7700 {
         animation: blink-7700 ${BLINK_INTERVAL_7700_MS}ms ease-in-out infinite;
       }
@@ -218,6 +238,9 @@ function useEmergencyBlinkStyles(): void {
       }
       .atc-blink-7600 {
         animation: blink-7600 ${BLINK_INTERVAL_7600_MS}ms ease-in-out infinite;
+      }
+      .atc-weather-pulse {
+        animation: pulse-hazard 3s ease-in-out infinite;
       }
     `;
     document.head.appendChild(style);
@@ -390,8 +413,8 @@ function AircraftMarker({
   );
 
   const icon = isSelected
-    ? createSelectedIcon(color, 12)
-    : createAircraftIcon(color, 10);
+    ? createSelectedIcon(color, aircraft.heading_deg, 18)
+    : createAircraftIcon(color, aircraft.heading_deg, 14);
 
   const handleClick = useCallback(() => {
     onSelect(aircraft.callsign);
@@ -415,7 +438,7 @@ function AircraftMarker({
           >
             <div
               style={{
-                fontFamily: "monospace",
+                fontFamily: "var(--font-mono)",
                 fontSize: "11px",
                 color,
                 background: "rgba(0,0,0,0.75)",
@@ -434,7 +457,7 @@ function AircraftMarker({
         <Tooltip direction="right" offset={[12, 0]} className={blinkClass}>
           <div
             style={{
-              fontFamily: "monospace",
+              fontFamily: "var(--font-mono)",
               fontSize: "11px",
               background: "rgba(0,0,0,0.85)",
               border: `1px solid ${color}55`,
@@ -507,11 +530,17 @@ function AircraftMarker({
         }}
       />
 
-      {/* Arrowhead at heading line tip */}
-      <Marker
-        position={headingEnd}
-        icon={createArrowheadIcon(color, aircraft.heading_deg)}
-        interactive={false}
+      {/* Arrowhead at heading line tip — Polygon for precise alignment */}
+      <Polygon
+        positions={computeArrowheadPoints(headingEnd[0], headingEnd[1], aircraft.heading_deg)}
+        pathOptions={{
+          color: "transparent",
+          fillColor: color,
+          fillOpacity: 0.8,
+          weight: 0,
+          interactive: false,
+          className: blinkClass,
+        }}
       />
 
       {/* 7700 danger circle */}
@@ -599,12 +628,71 @@ function RadarSweepOverlay(_props: {
   return null;
 }
 
+// ─── Weather Hazard Overlay ─────────────────────────────────────────
+
+/** Render pulsing weather hazard circles around affected aircraft. */
+function WeatherHazardOverlay({
+  weatherAdvisories,
+  aircraftMap,
+}: {
+  weatherAdvisories: WeatherAdvisory[];
+  aircraftMap: Map<string, AircraftState>;
+}): React.ReactElement | null {
+  if (weatherAdvisories.length === 0) return null;
+
+  return (
+    <>
+      {weatherAdvisories.map((advisory) => {
+        // Find the first affected aircraft that exists in the map
+        const affectedAc = advisory.affected_callsigns
+          .map((cs) => aircraftMap.get(cs))
+          .find((ac): ac is AircraftState => ac !== undefined);
+        if (!affectedAc) return null;
+
+        const hazardColor = advisory.severity === "critical" ? "#ff3333" : "#ffaa00";
+
+        return (
+          <Circle
+            key={advisory.advisory_id}
+            center={[affectedAc.latitude, affectedAc.longitude]}
+            radius={8 * METERS_PER_NM}
+            pathOptions={{
+              color: hazardColor,
+              weight: 1.5,
+              opacity: 0.7,
+              fillColor: hazardColor,
+              fillOpacity: 0.08,
+              dashArray: "8, 4",
+              className: "atc-weather-pulse",
+            }}
+          >
+            <Tooltip sticky>
+              <div style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "11px",
+                color: hazardColor,
+              }}>
+                ⚠ Weather Hazard ({advisory.severity})
+                <br />
+                <span style={{ color: "#aaa" }}>
+                  Affected: {advisory.affected_callsigns.join(", ")}
+                </span>
+              </div>
+            </Tooltip>
+          </Circle>
+        );
+      })}
+    </>
+  );
+}
+
 // ─── Main RadarView Component ───────────────────────────────────────
 
 /** Main RadarView component — Leaflet map with ATC display. */
 export function RadarView(): React.ReactElement {
   const aircraft = useAtcStore((s) => s.aircraft);
   const conflicts = useAtcStore((s) => s.conflicts);
+  const weatherAdvisories = useAtcStore((s) => s.weatherAdvisories);
   const centerLat = useAtcStore((s) => s.centerLatitude);
   const centerLng = useAtcStore((s) => s.centerLongitude);
   const selectedCallsign = useAtcStore((s) => s.selectedCallsign);
@@ -636,7 +724,7 @@ export function RadarView(): React.ReactElement {
   );
 
   return (
-    <div style={{ height: "calc(100vh - 60px)", width: "100%", position: "relative" }}>
+    <div style={{ height: "100%", width: "100%", position: "relative" }}>
       <MapContainer
         center={center}
         zoom={9}
@@ -682,9 +770,53 @@ export function RadarView(): React.ReactElement {
           />
         ))}
 
+        {/* Weather hazard overlay */}
+        <WeatherHazardOverlay weatherAdvisories={weatherAdvisories} aircraftMap={aircraftMap} />
+
         {/* Radar sweep overlay */}
         <RadarSweepOverlay center={center} />
       </MapContainer>
+
+      {/* Map Legend */}
+      <div style={{
+        position: 'absolute',
+        bottom: '2rem',
+        left: '0.75rem',
+        zIndex: 1000,
+        backgroundColor: 'rgba(5, 8, 5, 0.85)',
+        border: '1px solid #1a2e1a',
+        borderRadius: '4px',
+        padding: '0.5rem 0.6rem',
+        fontFamily: 'var(--font-mono)',
+        fontSize: '0.55rem',
+        color: '#88aa88',
+        display: 'flex',
+        flexDirection: 'column' as const,
+        gap: '0.3rem',
+        backdropFilter: 'blur(4px)',
+      }}>
+        <div style={{ fontWeight: 600, color: '#33ff33', fontSize: '0.6rem', marginBottom: '0.15rem' }}>LEGEND</div>
+        {/* Aircraft */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 2 L14 8 L20 10 L14 12 L14 18 L17 20 L17 21 L12 19 L7 21 L7 20 L10 18 L10 12 L4 10 L10 8 Z" fill="#33ff33" opacity="0.9"/></svg>
+          <span>Aircraft</span>
+        </div>
+        {/* Conflict */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <svg width="12" height="6" viewBox="0 0 12 6"><line x1="0" y1="3" x2="12" y2="3" stroke="#ffaa00" strokeWidth="1.5" strokeDasharray="3,2" /></svg>
+          <span style={{ color: '#ffaa00' }}>Conflict</span>
+        </div>
+        {/* Weather Hazard */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#ff3333" strokeWidth="1" strokeDasharray="2,1.5" opacity="0.8" /></svg>
+          <span style={{ color: '#ff3333' }}>Weather Hazard</span>
+        </div>
+        {/* Radar Coverage */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#1a3a1a" strokeWidth="0.8" strokeDasharray="1.5,3" /></svg>
+          <span>Radar Coverage</span>
+        </div>
+      </div>
     </div>
   );
 }

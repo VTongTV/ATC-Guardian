@@ -1,3 +1,68 @@
+/* ═══════════════════════════════════════════════════════════════════
+   ATC Guardian — Design System
+   Radar-scope console aesthetic with phosphor glow and tiered depth.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Font ──────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap');
+
+/* ─── Custom Properties ─────────────────────────────────────────── */
+:root {
+  /* Tiered depth backgrounds */
+  --bg-deep:     #050805;
+  --bg-mid:      #0a0e0a;
+  --bg-surface:  #0f140f;
+  --bg-raised:   #141a14;
+  --bg-overlay:  #1a221a;
+
+  /* Borders */
+  --border-dim:    #121e12;
+  --border-mid:    #1a2e1a;
+  --border-bright: #243a24;
+
+  /* Severity colors — consistent across every panel */
+  --color-nominal:  #33ff33;
+  --color-warning:  #ffaa00;
+  --color-critical: #ff3333;
+  --color-info:     #33ccff;
+
+  /* Text hierarchy */
+  --text-primary:   #d0e8d0;
+  --text-secondary: #88aa88;
+  --text-dim:       #5a7a5a;
+  --text-muted:     #3a5a3a;
+  --text-body:      #b0ccb0;
+
+  /* Accents */
+  --accent-blue:    #4488ff;
+  --accent-cyan:    #33ccff;
+  --accent-purple:  #aa88ff;
+  --accent-orange:  #ff6b35;
+
+  /* Type scale */
+  --font-mono:    'IBM Plex Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  --fs-title:     0.8rem;
+  --fs-body:      0.68rem;
+  --fs-meta:      0.6rem;
+  --fs-micro:     0.55rem;
+  --fs-header:    0.85rem;
+
+  /* Glow */
+  --glow-green:   0 0 8px rgba(51, 255, 51, 0.3), 0 0 20px rgba(51, 255, 51, 0.1);
+  --glow-amber:   0 0 8px rgba(255, 170, 0, 0.3), 0 0 20px rgba(255, 170, 0, 0.1);
+  --glow-red:     0 0 8px rgba(255, 51, 51, 0.3), 0 0 20px rgba(255, 51, 51, 0.1);
+
+  /* Spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -10,5 +75,301 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #0a0a0a;
+  background-color: var(--bg-deep);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbars ─────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-bright) var(--bg-deep);
+}
+
+/* ─── Keyframe Animations ────────────────────────────────────────── */
+
+/* Live data pulsing dot */
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; box-shadow: 0 0 3px var(--color-nominal); }
+  50%      { opacity: 0.4; box-shadow: 0 0 8px var(--color-nominal); }
+}
+
+/* Phosphor glow on panel titles */
+@keyframes glow-phosphor {
+  0%, 100% { text-shadow: 0 0 4px rgba(51, 255, 51, 0.4); }
+  50%      { text-shadow: 0 0 8px rgba(51, 255, 51, 0.6), 0 0 16px rgba(51, 255, 51, 0.2); }
+}
+
+/* Weather hazard pulse */
+@keyframes pulse-hazard {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.55; }
+}
+
+/* Toast slide-in/out */
+@keyframes toast-slide-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@keyframes toast-slide-out {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(-100%); opacity: 0; }
+}
+
+/* Reconnecting pulse */
+@keyframes pulse-reconnect {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+/* Stat chip glow for active alerts */
+@keyframes stat-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(var(--stat-glow-rgb), 0.3); }
+  50%      { box-shadow: 0 0 10px rgba(var(--stat-glow-rgb), 0.5); }
+}
+
+/* Jump-to-latest button fade-in */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Utility Classes ────────────────────────────────────────────── */
+
+.atc-panel-title {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--color-nominal);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: glow-phosphor 4s ease-in-out infinite;
+}
+
+.atc-panel-header {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-mid);
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-mid);
+}
+
+.atc-meta {
+  font-size: var(--fs-meta);
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+}
+
+.atc-body {
+  font-size: var(--fs-body);
+  color: var(--text-body);
+  line-height: 1.45;
+}
+
+/* ─── Page Container ────────────────────────────────────────────── */
+.atc-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--bg-deep);
+  overflow: hidden;
+}
+
+/* ─── Agent Team Page ──────────────────────────────────────────── */
+.atc-agent-team-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--bg-deep);
+  overflow: hidden;
+}
+
+.atc-agent-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-4);
+  padding: var(--sp-6);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.atc-agent-card-extended {
+  border-radius: 6px;
+  padding: var(--sp-5);
+  position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.atc-agent-card-extended:hover {
+  box-shadow: 0 0 12px rgba(var(--card-glow-rgb, 51,255,51), 0.15);
+}
+
+/* ─── Focus States ───────────────────────────────────────────────── */
+
+select:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 1.5px solid var(--color-nominal);
+  outline-offset: 2px;
+  box-shadow: 0 0 6px rgba(51, 255, 51, 0.3);
+}
+
+button {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+button:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Leaflet Overrides ──────────────────────────────────────────── */
+
+/* Zoom controls */
+.leaflet-control-zoom {
+  border: 1px solid var(--border-mid) !important;
+  border-radius: 4px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+.leaflet-control-zoom a {
+  background-color: var(--bg-surface) !important;
+  color: var(--color-nominal) !important;
+  border-bottom: 1px solid var(--border-dim) !important;
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 30px !important;
+  font-size: 16px !important;
+  font-family: var(--font-mono) !important;
+  transition: background-color 0.15s ease;
+}
+.leaflet-control-zoom a:hover {
+  background-color: var(--bg-raised) !important;
+  color: #66ff66 !important;
+}
+.leaflet-control-zoom a:last-child {
+  border-bottom: none !important;
+}
+
+/* Attribution */
+.leaflet-control-attribution {
+  background: rgba(5, 8, 5, 0.75) !important;
+  color: var(--text-muted) !important;
+  font-size: 9px !important;
+  font-family: var(--font-mono) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--text-dim) !important;
+}
+
+/* Tooltips */
+.leaflet-tooltip {
+  background: rgba(10, 14, 10, 0.92) !important;
+  border: 1px solid var(--border-mid) !important;
+  border-radius: 3px !important;
+  color: var(--text-body) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6) !important;
+  padding: 0 !important;
+}
+.leaflet-tooltip-top::before,
+.leaflet-tooltip-bottom::before,
+.leaflet-tooltip-left::before,
+.leaflet-tooltip-right::before {
+  border-color: transparent !important;
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Responsive: below 1280px ───────────────────────────────────── */
+@media (max-width: 1280px) {
+  .atc-main-layout {
+    flex-direction: column !important;
+  }
+  .atc-side-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-height: 50vh;
+    border-left: none !important;
+    border-top: 1px solid var(--border-mid);
+  }
+  .atc-resize-handle {
+    display: none !important;
+  }
+  .atc-map-container {
+    height: 50vh !important;
+  }
+  .atc-agent-team-grid {
+    grid-template-columns: 1fr;
+    padding: var(--sp-4);
+  }
+}
+
+/* ─── Agent comms list styling ─────────────────────────────────────── */
+.atc-msg-body ol {
+  counter-reset: atc-ol-counter;
+  list-style: none;
+  padding-left: 0;
+}
+.atc-msg-body ol li {
+  counter-increment: atc-ol-counter;
+  position: relative;
+  padding-left: 1.8rem;
+  margin: 0.3rem 0;
+}
+.atc-msg-body ol li::before {
+  content: counter(atc-ol-counter) ".";
+  position: absolute;
+  left: 0;
+  font-weight: 700;
+  color: var(--color-nominal);
+}
+.atc-msg-body ul {
+  list-style: none;
+  padding-left: 0;
+}
+.atc-msg-body ul li {
+  position: relative;
+  padding-left: 1.2rem;
+  margin: 0.3rem 0;
+}
+.atc-msg-body ul li::before {
+  content: "▸";
+  position: absolute;
+  left: 0;
+  color: var(--color-nominal);
+  font-weight: 700;
 }
