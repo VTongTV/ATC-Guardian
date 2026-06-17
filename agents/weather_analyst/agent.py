@@ -39,6 +39,16 @@ def _crewai_model_string(provider: str, model_name: str) -> str:
     ``LLM Provider NOT provided``. This helper prepends the litellm
     provider prefix when the model doesn't already carry one.
 
+    IMPORTANT: when using AIML API, the resolved model name often starts
+    with a native-provider prefix like ``deepseek/``. CrewAI/litellm
+    interprets ``deepseek/`` as the native DeepSeek provider (requiring
+    ``DEEPSEEK_API_KEY``), which fails because we want to route through
+    AIML API's OpenAI-compatible endpoint instead. To fix this, we
+    always prefix with ``openai/`` when not using OpenRouter — this tells
+    litellm to use the OpenAI-compatible route, which picks up
+    ``OPENAI_API_KEY`` and ``OPENAI_BASE_URL`` from environment
+    variables set in :func:`create_weather_analyst_adapter`.
+
     The Coordinator (``ChatOpenAI``) and PydanticAI agents
     (``openai:<model>``) are unaffected — only CrewAI goes through
     litellm, so this prefixing stays local to the Weather Analyst.
@@ -50,15 +60,19 @@ def _crewai_model_string(provider: str, model_name: str) -> str:
 
     Returns:
         A model string litellm can route (e.g.
-        ``openrouter/nex-agi/nex-n2-pro:free``).
+        ``openrouter/nex-agi/nex-n2-pro:free`` or
+        ``openai/deepseek/deepseek-v4-pro``).
     """
     # litellm-recognised prefixes — leave already-routable strings alone.
-    known_prefixes = ("openrouter/", "openai/", "anthropic/", "aimlapi/")
+    known_prefixes = ("openrouter/", "openai/", "anthropic/")
     if any(model_name.startswith(p) for p in known_prefixes):
         return model_name
     if provider == "openrouter":
         return f"openrouter/{model_name}"
-    return model_name
+    # For aimlapi (or any OpenAI-compatible provider): prefix with
+    # ``openai/`` so litellm routes through the OpenAI-compatible path,
+    # which honours OPENAI_API_KEY and OPENAI_BASE_URL from env vars.
+    return f"openai/{model_name}"
 
 
 def create_weather_analyst_adapter() -> CrewAIAdapter:

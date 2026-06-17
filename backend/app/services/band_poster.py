@@ -10,16 +10,32 @@ The poster is de-duplicated: each condition (identified by its advisory
 id or callsign+kind) is only dispatched once per active lifetime, so
 agents are not spammed on every 4-second tick. This is the event-driven
 LLM invocation pattern mandated by AGENTS.md Rule 7.5.
+
+Rate limiting
+~~~~~~~~~~~~~
+Each agent is allowed a maximum of 3 dispatched messages per rolling
+60-second window. This prevents excessive LLM API consumption while
+still allowing agents to handle multiple concurrent events. When an
+agent hits the limit, the dispatch is logged but silently dropped —
+the agent is already busy processing earlier messages.
 """
 
 from __future__ import annotations
 
 import logging
+import time
+from collections import defaultdict
 
 from shared.band_client import BandClient, BandOutboundMessage
 from shared.models import RadarSnapshot
 
 logger = logging.getLogger(__name__)
+
+#: Maximum messages dispatched to a single agent per rolling window.
+AGENT_RATE_LIMIT: int = 3
+
+#: Duration of the rolling rate-limit window in seconds.
+AGENT_RATE_WINDOW_SECONDS: float = 60.0
 
 
 class BandPoster:
@@ -29,6 +45,8 @@ class BandPoster:
         _client: The BandClient transport (sim or live).
         _dispatched: Set of condition keys already dispatched, used to
             avoid re-triggering agents for an ongoing condition.
+        _agent_timestamps: Per-agent list of dispatch timestamps used
+            to enforce the rolling rate limit.
     """
 
     def __init__(self, client: BandClient) -> None:
@@ -39,6 +57,7 @@ class BandPoster:
         """
         self._client = client
         self._dispatched: set[str] = set()
+        self._agent_timestamps: dict[str, list[float]] = defaultdict(list)
 
     async def process_snapshot(self, snapshot: RadarSnapshot) -> None:
         """Inspect a snapshot and dispatch any new conditions to agents.
@@ -105,8 +124,9 @@ class BandPoster:
             await self._safe_post(message, "emergency-response (veto)")
 
     def reset(self) -> None:
-        """Clear the dispatched-key cache (e.g. on scenario change)."""
+        """Clear the dispatched-key cache and rate-limit timestamps."""
         self._dispatched.clear()
+        self._agent_timestamps.clear()
 
     # ------------------------------------------------------------------
     # Per-condition dispatch
@@ -214,8 +234,50 @@ class BandPoster:
             )
             await self._safe_post(message, "weather-analyst")
 
+    def _check_rate_limit(self, agent: str) -> bool:
+        """Check whether an agent is within its per-minute message limit.
+
+        Maintains a rolling window of dispatch timestamps per agent.
+        Timestamps older than ``AGENT_RATE_WINDOW_SECONDS`` are pruned
+        on each call. If the agent has fewer than
+        ``AGENT_RATE_LIMIT`` dispatches in the current window the
+        check passes (returns ``True``); otherwise it fails (returns
+        ``False``).
+
+        Args:
+            agent: The agent identity being dispatched.
+
+        Returns:
+            ``True`` if the dispatch is allowed, ``False`` if it should
+            be dropped.
+        """
+        now = time.monotonic()
+        timestamps = self._agent_timestamps[agent]
+        # Prune timestamps outside the rolling window.
+        cutoff = now - AGENT_RATE_WINDOW_SECONDS
+        self._agent_timestamps[agent] = [t for t in timestamps if t > cutoff]
+        timestamps = self._agent_timestamps[agent]
+
+        if len(timestamps) >= AGENT_RATE_LIMIT:
+            logger.warning(
+                "Rate limit hit for @%s: %d/%d in last %.0fs — dropping dispatch",
+                agent,
+                len(timestamps),
+                AGENT_RATE_LIMIT,
+                AGENT_RATE_WINDOW_SECONDS,
+            )
+            return False
+
+        # Record this dispatch.
+        timestamps.append(now)
+        return True
+
     async def _safe_post(self, message: BandOutboundMessage, agent: str) -> None:
-        """Post a message, logging and swallowing transport errors.
+        """Post a message, enforcing per-agent rate limiting.
+
+        If the agent has already been dispatched 3 or more messages in
+        the last 60 seconds, this dispatch is silently dropped with a
+        warning log. Otherwise it is posted normally.
 
         A failed post must not crash the simulation loop.  If the room
         limit is reached, :meth:`LiveBandClient.post_message` will
@@ -224,8 +286,11 @@ class BandPoster:
 
         Args:
             message: The outbound message.
-            agent: The agent being dispatched (for logging).
+            agent: The agent being dispatched (for logging and rate limiting).
         """
+        if not self._check_rate_limit(agent):
+            return
+
         try:
             await self._client.post_message(message)
             logger.info("Dispatched @%s for %s", agent, message.correlation_id)
