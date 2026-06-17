@@ -108,8 +108,11 @@ RVSM_UPPER_BOUND_FT: int = 41000
 # Data refresh intervals
 # ---------------------------------------------------------------------------
 
-SIMULATED_DATA_INTERVAL_SECONDS: float = 4.0
-"""Interval between simulated data updates in seconds."""
+SIMULATED_DATA_INTERVAL_SECONDS: float = 30.0
+"""Interval between simulated data updates in seconds.
+30s avoids excessive LLM API consumption — each simulation tick
+can trigger cascading agent @mentions, each of which is an LLM call.
+At 4s intervals with 6 agents, a 2-minute demo burns ~17M tokens."""
 
 OPENSKY_POLL_INTERVAL_SECONDS: float = 10.0
 """Minimum interval between OpenSky API polls in seconds."""
@@ -199,11 +202,9 @@ AIMLAPI_BASE_URL: str = "https://api.aimlapi.com/v1"
 """AI/ML API base URL (OpenAI-compatible)."""
 
 AIMLAPI_DEFAULT_MODEL: str = "deepseek/deepseek-v4-pro"
-"""Default AI/ML API model. DeepSeek V4 Pro pairs strong analytical
-reasoning with reliable structured JSON output — the safest single
-fallback when an agent has no per-agent model override. Other models in
-the pool (GPT-5.1, Gemini 3.5 Flash, GLM-5.1, Kimi K2-6) are applied via
-the per-agent overrides in partner_routing.py."""
+"""Default AI/ML API model. DeepSeek V4 Pro with ``reasoning_effort=low``
+minimises thinking tokens while keeping pro-quality output. The per-agent
+overrides in partner_routing.py still apply when configured."""
 
 AIMLAPI_REASONING_MODEL: str = "openai/gpt-5-1"
 """AI/ML API reasoning variant for analysis-heavy agents."""
