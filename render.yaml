@@ -11,6 +11,7 @@ services:
     buildCommand: pip install uv && uv sync
     startCommand: uv run uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /data/simulated
+    initialDelaySeconds: 30
     autoDeploy: true
     envVars:
       - key: BAND_MODE
