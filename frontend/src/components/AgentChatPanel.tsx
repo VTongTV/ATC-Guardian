@@ -13,7 +13,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { AuditEvent } from "../lib/types";
 import { useAtcStore } from "../stores/atcStore";
-import { AgentIcon, AGENT_COLORS as SHARED_AGENT_COLORS, SystemIcon } from "./AgentIcons";
+import { AgentIcon } from "./AgentIcons";
 
 // ─── Agent Color & Identity Maps ────────────────────────────────────
 

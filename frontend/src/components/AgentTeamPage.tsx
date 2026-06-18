@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAtcStore } from "../stores/atcStore";
-import { AgentIcon, AGENT_COLORS } from "./AgentIcons";
+import { AgentIcon } from "./AgentIcons";
 
 interface AgentNode {
   name: string;

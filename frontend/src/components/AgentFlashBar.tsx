@@ -22,7 +22,7 @@ function useFlashIntensities(): Record<string, number> {
   const lastReplyAgent = useAtcStore((s) => s.lastReplyAgent);
   const lastReplyTick = useAtcStore((s) => s.lastReplyTick);
   const intensities = useRef<Record<string, number>>({});
-  const [renderTick, setRenderTick] = useState(0);
+  const [, setRenderTick] = useState(0);
 
   // When a new reply arrives, set that agent's intensity to 1
   useEffect(() => {

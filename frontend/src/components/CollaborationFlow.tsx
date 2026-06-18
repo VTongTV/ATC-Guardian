@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAtcStore } from "../stores/atcStore";
-import { AgentIcon, AGENT_COLORS } from "./AgentIcons";
+import { AgentIcon } from "./AgentIcons";
 
 /** Agent node metadata from GET /collaboration/graph. */
 interface AgentNode {
