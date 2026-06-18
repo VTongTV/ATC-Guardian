@@ -15,7 +15,6 @@
   <a href="#the-collaboration-loop">Collaboration loop</a> ·
   <a href="#architecture">Architecture</a> ·
   <a href="#going-live-with-band">Live Band</a> ·
-  <a href="SETUP.md">Full setup guide</a>
 </p>
 
 ---
@@ -219,14 +218,16 @@ ATC Guardian targets the **Best Use of AI/ML API** partner prize with a principl
 
 | Agent | Recommended AI/ML API model | Why this model for this agent |
 |---|---|---|
-| Conflict Detector | `deepseek/deepseek-v4-pro` | Most time-critical loop; pairs strong analytical reasoning with reliable structured JSON so CPA advisories are well-formed for downstream parsing |
+| Conflict Detector | `deepseek/deepseek-v4-pro` | Deep reasoning plus reliable structured JSON so CPA advisories are well-formed for the downstream Safety Reviewer and controller to parse |
 | Weather Analyst | `deepseek/deepseek-v4-pro` | Strongest analytical model on AI/ML API for turning raw SIGMET polygons into a crisp deviation advisory |
-| Safety Reviewer | `deepseek/deepseek-v4-pro` (`reasoning_effort=low`) | Bounded `APPROVE` / `REJECT` / `MODIFY` classification at temp 0 — fast, dependable structured output with minimal thinking tokens |
-| Emergency Response | `deepseek/deepseek-v4-pro` (`reasoning_effort=low`) | Highest-stakes path; deterministic phase classification and resolution plan under pressure |
-| Coordinator | `deepseek/deepseek-v4-pro` (`reasoning_effort=low`) | Multi-step @mention dispatch across the whole roster — deep enough for correct routing, no wasted thinking tokens |
-| Ground Ops | `deepseek/deepseek-v4-pro` (`reasoning_effort=low`, `max_tokens=512`) | Repeated bounded tool-call lookups (runway / ATIS / NOTAM) — precise structured output without thinking-token overhead |
+| Safety Reviewer | `zhipu/glm-5.1` | Deterministic `APPROVE` / `REJECT` / `MODIFY` verdict at temperature 0 — strong instruction adherence for this bounded classification |
+| Emergency Response | `zhipu/glm-5.1` | Deterministic `7700` phase classification at temperature 0 — trustworthy under the highest-stakes path |
+| Coordinator | `moonshot/kimi-k2-6` | Long-context instruction-following for correct @mention dispatch across the whole agent roster |
+| Ground Ops | `deepseek/deepseek-v4-flash` | Fast, cheap tool-calls for bounded runway / ATIS / NOTAM lookups |
 
-**Token economy.** V4 Pro with `reasoning_effort=low` and per-agent `max_tokens` caps minimises thinking tokens while keeping pro-quality output. Combined with the lazy connect / hard disconnect lifecycle and a 3-messages-per-minute per-agent rate limit, this keeps demo burn rates sustainable — important when six agents can otherwise @mention-cascade each other into millions of tokens per minute.
+A single AI/ML API key unlocks DeepSeek, Zhipu, and Moonshot models from three different labs — and ATC Guardian picks the right one per job rather than forcing one model everywhere. That diversity is itself the pitch for the **Best Use of AI/ML API** prize: it is a real, load-bearing per-agent routing decision, not a cosmetic one.
+
+**Token economy.** Pro-tier models with per-agent `max_tokens` caps keep output tight. Combined with the lazy connect / hard disconnect lifecycle and a 3-messages-per-minute per-agent rate limit, this keeps demo burn rates sustainable — important when six agents can otherwise @mention-cascade each other into millions of tokens per minute.
 
 When no AI/ML API key is configured, agents transparently fall back to OpenRouter free models, so the system always runs end-to-end.
 
