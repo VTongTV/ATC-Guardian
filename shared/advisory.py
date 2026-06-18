@@ -26,13 +26,13 @@ def kind_from_metadata(meta: dict) -> str:
     """
     haystack = (
         f"{meta.get('kind', '')} {meta.get('summary', '')} "
-        f"{meta.get('callsign', '')}"
+        f"{meta.get('callsign', '')} {meta.get('content', '')}"
     ).lower()
-    if "conflict" in haystack:
+    if "conflict" in haystack or "cpa" in haystack or "lateral" in haystack:
         return "conflict"
-    if "sigmet" in haystack or "weather" in haystack:
+    if "sigmet" in haystack or "weather" in haystack or "deviation" in haystack:
         return "weather"
-    if "emergency" in haystack or "7700" in haystack or "distress" in haystack:
+    if "emergency" in haystack or "7700" in haystack or "distress" in haystack or "squawk" in haystack:
         return "emergency"
     return "advisory"
 

@@ -146,24 +146,64 @@ class AdvisoryIngester:
             return
         if msg.message_id and msg.message_id in self._promoted:
             return
-        if not is_promotable_advisory(meta):
+
+        parsed_meta = dict(meta)
+        parsed_meta["content"] = msg.content
+        
+        import re
+        content_str = str(msg.content or "")
+        
+        # 1. Extract JSON trailer if present
+        json_match = re.search(r"```json\s*\n(.*?)\n\s*```", content_str, re.DOTALL)
+        if json_match:
+            import json
+            try:
+                trailer = json.loads(json_match.group(1))
+                parsed_meta.update(trailer)
+            except Exception:
+                pass
+
+        # 2. Parse text verdict
+        verdict_match = re.search(r"(?i)VERDICT(?:[^A-Za-z]+)(APPROVE|APPROVED|REJECT|REJECTED|MODIFY|MODIFIED|GO|NO-GO)", content_str)
+        if verdict_match:
+            v = verdict_match.group(1).upper()
+            if v in ("GO", "APPROVED"): v = "APPROVE"
+            elif v in ("NO-GO", "REJECTED"): v = "REJECT"
+            elif v == "MODIFIED": v = "MODIFY"
+            parsed_meta["verdict"] = v
+            
+            reasoning_match = re.search(r"(?i)REASONING:\s*(.*?)(?:\n[A-Z]+:|$)", content_str, re.DOTALL)
+            if reasoning_match:
+                parsed_meta["summary"] = reasoning_match.group(1).strip().replace("\n", " ")
+            elif "summary" not in parsed_meta:
+                lines = [line.strip() for line in content_str.splitlines() if line.strip() and not line.startswith("@[[")]
+                for i, line in enumerate(lines):
+                    if "VERDICT" in line.upper() and i + 1 < len(lines):
+                        parsed_meta["summary"] = lines[i+1]
+                        break
+                
+            mod_match = re.search(r"(?i)MODIFICATION:\s*(.*?)(?:\n[A-Z]+:|$)", content_str, re.DOTALL)
+            if mod_match:
+                parsed_meta["modification"] = mod_match.group(1).strip().replace("\n", " ")
+
+        if not is_promotable_advisory(parsed_meta):
             return
         try:
-            summary = str(meta.get("summary") or msg.content).strip().splitlines()[0]
-            verdict = str(meta.get("verdict", "APPROVE")).upper() or "APPROVE"
+            summary = str(parsed_meta.get("summary") or msg.content).strip().splitlines()[0]
+            verdict = str(parsed_meta.get("verdict", "APPROVE")).upper() or "APPROVE"
             recommendation = (
-                meta.get("recommendation")
-                or meta.get("modification")
+                parsed_meta.get("recommendation")
+                or parsed_meta.get("modification")
                 or "see advisory"
             )
             evidence = {
                 k: v
-                for k, v in meta.items()
+                for k, v in parsed_meta.items()
                 if k in {"cpa", "callsign", "sigmet_id", "phase"}
             }
             await self._decision_service.create_proposal(  # type: ignore[union-attr]
-                scenario_id=scenario_id or meta.get("scenario_id") or "SCN-A",
-                advisory_kind=kind_from_metadata(meta),
+                scenario_id=scenario_id or parsed_meta.get("scenario_id") or "SCN-A",
+                advisory_kind=kind_from_metadata(parsed_meta),
                 summary=summary,
                 agent_recommendation=str(recommendation),
                 reviewer_verdict=verdict,
