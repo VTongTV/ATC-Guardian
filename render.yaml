@@ -19,7 +19,7 @@ services:
       - key: DEFAULT_SCENARIO_ID
         value: SCN-A
       - key: SIMULATION_INTERVAL_SECONDS
-        value: "4.0"
+        value: "30.0"
       - key: CORS_ORIGIN
         sync: false
       - key: LLM_PROVIDER
