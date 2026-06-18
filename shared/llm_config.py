@@ -21,17 +21,113 @@ Budget note: we have 4 AI/ML API keys ($10 each, $40 total). To spread
 load and avoid exhausting one key during a demo, agents rotate through
 ``AIMLAPI_KEY_1`` .. ``AIMLAPI_KEY_4`` when set; otherwise the single
 ``AIMLAPI_KEY`` is used.
+
+Automatic fallback
+------------------
+When AI/ML API credits are exhausted (HTTP 402, 429, or quota-related
+error messages), :func:`mark_aimlapi_exhausted` is called and all
+subsequent calls to :func:`resolve_llm_config` return OpenRouter
+credentials instead. This happens transparently — agents that are
+rebuilt after the fallback get OpenRouter models at zero cost.
 """
 
 from __future__ import annotations
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 #: Supported provider identifiers.
 SUPPORTED_PROVIDERS: tuple[str, ...] = ("openrouter", "aimlapi")
 
 #: Number of pooled AI/ML API keys available for rotation.
 AIMLAPI_KEY_POOL_SIZE: int = 4
+
+# ---------------------------------------------------------------------------
+# Circuit breaker — AI/ML API exhaustion detection
+# ---------------------------------------------------------------------------
+
+_aimlapi_exhausted: bool = False
+"""Module-level flag: True once AI/ML API returns a quota/credit error.
+Once set, resolve_llm_config() falls back to OpenRouter for the
+remainder of the process lifetime."""
+
+
+def mark_aimlapi_exhausted() -> None:
+    """Mark AI/ML API as exhausted and switch to OpenRouter fallback.
+
+    Called by the agent runner when an LLM call to AI/ML API returns
+    a quota/credit error (HTTP 402, 429, or specific error messages).
+    After this, all resolve_llm_config() calls return OpenRouter
+    credentials regardless of the LLM_PROVIDER env var.
+    """
+    global _aimlapi_exhausted
+    if not _aimlapi_exhausted:
+        _aimlapi_exhausted = True
+        logger.warning(
+            "AI/ML API credits exhausted — falling back to OpenRouter "
+            "for all subsequent LLM calls"
+        )
+
+
+def is_aimlapi_exhausted() -> bool:
+    """Check whether AI/ML API has been marked as exhausted.
+
+    Returns:
+        True if the circuit breaker has tripped.
+    """
+    return _aimlapi_exhausted
+
+
+def reset_aimlapi_exhausted() -> None:
+    """Reset the circuit breaker (e.g. for testing or after key rotation)."""
+    global _aimlapi_exhausted
+    _aimlapi_exhausted = False
+
+
+def is_quota_error(status_code: int | None, error_message: str | None = None) -> bool:
+    """Check whether an LLM API error indicates credit/quota exhaustion.
+
+    Detects:
+    - HTTP 402 (Payment Required)
+    - HTTP 429 (Too Many Requests) when the body mentions quota/credits
+    - Error messages containing 'insufficient', 'quota', 'credit',
+      'balance', 'billing', or 'limit exceeded'
+
+    Args:
+        status_code: HTTP status code from the API response (may be None).
+        error_message: Error body or message string (may be None).
+
+    Returns:
+        True if the error indicates credit/quota exhaustion.
+    """
+    if status_code == 402:
+        return True
+
+    if error_message:
+        lower = error_message.lower()
+        quota_keywords = (
+            "insufficient",
+            "quota",
+            "credit",
+            "balance",
+            "billing",
+            "limit exceeded",
+            "rate limit",
+            "too many requests",
+            "exceeded",
+        )
+        if any(kw in lower for kw in quota_keywords):
+            # For 429, only count it as quota if the message mentions
+            # limits/credits rather than a simple "slow down" retry.
+            if status_code == 429:
+                return True
+            # Non-429 with quota keywords is definitely exhaustion.
+            if status_code is None or status_code >= 400:
+                return True
+
+    return False
 
 
 def _resolve_aimlapi_key() -> str:
@@ -67,6 +163,41 @@ def _resolve_aimlapi_key() -> str:
     )
 
 
+def _resolve_openrouter_config(agent_model_env_var: str) -> tuple[str, str, str]:
+    """Resolve OpenRouter LLM config, ignoring per-agent model overrides
+    that reference AI/ML API-specific models.
+
+    When falling back from AI/ML API, per-agent ``*_MODEL`` env vars
+    may contain AI/ML API-specific model IDs (e.g. ``deepseek/deepseek-v4-pro``)
+    that don't exist on OpenRouter. This function ignores those overrides
+    and uses the OpenRouter default model instead.
+
+    Args:
+        agent_model_env_var: Name of the env var that holds the per-agent
+            model override.
+
+    Returns:
+        Tuple of ``(base_url, api_key, model_name)`` for OpenRouter.
+    """
+    base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    default_model = os.getenv(
+        "OPENROUTER_DEFAULT_MODEL", "nex-agi/nex-n2-pro:free"
+    )
+
+    if not api_key:
+        raise ValueError(
+            "OPENROUTER_API_KEY is missing. Cannot fall back from AI/ML API "
+            "without an OpenRouter key. Set OPENROUTER_API_KEY to enable "
+            "automatic fallback when AI/ML API credits run out."
+        )
+
+    # Ignore AI/ML API-specific model overrides — use OpenRouter default.
+    # The per-agent *_MODEL env vars contain AI/ML API model IDs like
+    # "deepseek/deepseek-v4-pro" which don't exist on OpenRouter.
+    return base_url, api_key, default_model
+
+
 def resolve_llm_config(agent_model_env_var: str) -> tuple[str, str, str]:
     """Resolve LLM provider config from shared environment variables.
 
@@ -74,6 +205,10 @@ def resolve_llm_config(agent_model_env_var: str) -> tuple[str, str, str]:
     settings to determine the base URL, API key, and model name. A
     per-agent model override (``agent_model_env_var``) takes precedence
     over the provider default.
+
+    **Automatic fallback:** If AI/ML API has been marked as exhausted
+    (via :func:`mark_aimlapi_exhausted`), this function returns
+    OpenRouter credentials regardless of the ``LLM_PROVIDER`` env var.
 
     Args:
         agent_model_env_var: Name of the env var that holds the per-agent
@@ -86,6 +221,10 @@ def resolve_llm_config(agent_model_env_var: str) -> tuple[str, str, str]:
         ValueError: If ``LLM_PROVIDER`` is not one of the supported values.
         ValueError: If the resolved API key is empty or missing.
     """
+    # Circuit breaker: if AI/ML API is exhausted, always use OpenRouter
+    if _aimlapi_exhausted:
+        return _resolve_openrouter_config(agent_model_env_var)
+
     provider = os.getenv("LLM_PROVIDER", "openrouter")
     agent_model = os.getenv(agent_model_env_var)
 

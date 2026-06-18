@@ -87,8 +87,21 @@ function ScenarioDropdown({
   const [switching, setSwitching] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const [, forceUpdate] = useState(0);
 
   const active = scenarios.find((s) => s.id === value);
+
+  // Reposition fixed dropdown on scroll/resize
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => forceUpdate((n) => n + 1);
+    window.addEventListener("scroll", handler, true);
+    window.addEventListener("resize", handler);
+    return () => {
+      window.removeEventListener("scroll", handler, true);
+      window.removeEventListener("resize", handler);
+    };
+  }, [open]);
 
   // Close on outside click
   useEffect(() => {
@@ -127,7 +140,7 @@ function ScenarioDropdown({
   );
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
+    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
       {/* Trigger button */}
       <button
         type="button"
@@ -153,6 +166,7 @@ function ScenarioDropdown({
           opacity: switching ? 0.6 : 1,
           transition: "border-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast)",
           textAlign: "left",
+          boxSizing: "border-box",
         }}
         onFocus={(e) => {
           e.currentTarget.style.borderColor = "var(--color-nominal)";
@@ -190,26 +204,32 @@ function ScenarioDropdown({
         </span>
       </button>
 
-      {/* Dropdown list */}
+      {/* Dropdown list — positioned fixed to escape narrow parent */}
       {open && (
         <ul
           ref={listRef}
           role="listbox"
           aria-activedescendant={value}
           style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            right: 0,
-            zIndex: 50,
+            position: "fixed",
+            top: containerRef.current
+              ? containerRef.current.getBoundingClientRect().bottom + 4
+              : undefined,
+            left: containerRef.current
+              ? containerRef.current.getBoundingClientRect().left
+              : undefined,
+            width: containerRef.current
+              ? Math.max(containerRef.current.getBoundingClientRect().width, 420)
+              : 420,
+            zIndex: 9999,
             listStyle: "none",
             margin: 0,
             padding: "4px",
             backgroundColor: "var(--bg-surface)",
             border: "1px solid var(--border-bright)",
             borderRadius: "var(--radius-lg)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.5), 0 0 12px rgba(51,255,51,0.06)",
-            maxHeight: "280px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.6), 0 0 16px rgba(51,255,51,0.08)",
+            maxHeight: "60vh",
             overflowY: "auto",
             fontFamily: "var(--font-mono)",
           }}
@@ -226,11 +246,11 @@ function ScenarioDropdown({
                   display: "flex",
                   flexDirection: "column",
                   gap: "2px",
-                  padding: "8px 10px",
+                  padding: "10px 12px",
                   borderRadius: "var(--radius-md)",
                   cursor: "pointer",
                   backgroundColor: isActive ? "rgba(51, 255, 51, 0.12)" : "transparent",
-                  border: `1px solid ${isActive ? "rgba(51, 255, 51, 0.35)" : "1px solid transparent"}`,
+                  border: isActive ? "1px solid rgba(51, 255, 51, 0.35)" : "1px solid transparent",
                   transition: "background-color var(--transition-fast), border-color var(--transition-fast)",
                 }}
                 onMouseEnter={(e) => {

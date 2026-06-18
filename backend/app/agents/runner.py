@@ -337,7 +337,12 @@ def _build_agent(agent_entry: dict[str, str]):
     _original_on_execute = agent._on_execute
 
     async def _guarded_on_execute(ctx, event):
-        """Only process events when demo is active + within rate limit."""
+        """Only process events when demo is active + within rate limit.
+
+        Also detects AI/ML API quota errors and triggers automatic
+        fallback to OpenRouter by marking the circuit breaker and
+        scheduling an agent rebuild.
+        """
         if not _demo_active:
             logger.info(
                 "Agent '%s' dropping message — demo not active", name
@@ -348,7 +353,31 @@ def _build_agent(agent_entry: dict[str, str]):
                 "Agent '%s' dropping message — rate limited", name
             )
             return
-        await _original_on_execute(ctx, event)
+        try:
+            await _original_on_execute(ctx, event)
+        except Exception as exc:
+            # Check if this is a quota/credit error from AI/ML API
+            from shared.llm_config import is_quota_error, is_aimlapi_exhausted
+
+            status_code = getattr(exc, "status_code", None)
+            if status_code is None:
+                # httpx.HTTPStatusError / openai.APIStatusError
+                resp = getattr(exc, "response", None)
+                if resp is not None:
+                    status_code = getattr(resp, "status_code", None)
+            error_message = str(exc)
+
+            if not is_aimlapi_exhausted() and is_quota_error(status_code, error_message):
+                from shared.llm_config import mark_aimlapi_exhausted
+                mark_aimlapi_exhausted()
+                logger.warning(
+                    "Agent '%s' hit AI/ML API quota limit (status=%s). "
+                    "Marking exhausted — will fall back to OpenRouter on next rebuild.",
+                    name,
+                    status_code,
+                )
+            # Re-raise so the adapter/framework can handle it
+            raise
 
     agent._on_execute = _guarded_on_execute
 
@@ -434,3 +463,44 @@ async def shutdown_agents_async(tasks: list[asyncio.Task]) -> None:
                 result,
             )
     logger.info("Shutdown complete for %d agent tasks", len(tasks))
+
+
+async def rebuild_agents_with_fallback(
+    current_tasks: list[asyncio.Task],
+) -> tuple[list[asyncio.Task], list[str]]:
+    """Shut down current agents and rebuild them with fallback credentials.
+
+    Called when AI/ML API credits are exhausted.  Shuts down all running
+    agent tasks, marks AI/ML API as exhausted in the circuit breaker, and
+    relaunches all agents — which will now resolve to OpenRouter
+    credentials via :func:`resolve_llm_config`.
+
+    Args:
+        current_tasks: The list of currently running agent tasks to replace.
+
+    Returns:
+        Tuple of (new_tasks, errors), same as :func:`launch_agents`.
+    """
+    from shared.llm_config import mark_aimlapi_exhausted, is_aimlapi_exhausted
+
+    if not is_aimlapi_exhausted():
+        mark_aimlapi_exhausted()
+
+    logger.info(
+        "Rebuilding agents with OpenRouter fallback "
+        "(shutting down %d current tasks)...",
+        len(current_tasks),
+    )
+
+    # Shut down existing agents cleanly
+    await shutdown_agents_async(current_tasks)
+
+    # Relaunch — resolve_llm_config will now return OpenRouter creds
+    new_tasks, errors = await launch_agents()
+
+    logger.info(
+        "Agent rebuild complete: %d running, %d failed (fallback provider active)",
+        len(new_tasks),
+        len(errors),
+    )
+    return new_tasks, errors
