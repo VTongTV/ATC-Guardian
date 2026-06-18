@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATC Guardian - Band of Agents Hackathon</title>
+    
+    <!-- Fonts -->
+    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=dm-sans@400,500&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Style B: Dark Executive (Radar/Aviation Motif)
+           =========================================== */
+        :root {
+            --bg-primary: #050505;
+            --bg-card: rgba(16, 185, 129, 0.03);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --accent: #10b981; /* Radar Green */
+            --accent-glow: rgba(16, 185, 129, 0.15);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+
+            --font-display: 'Clash Display', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+
+            --slide-padding: clamp(3rem, 6vw, 6rem);
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 1.2s;
+        }
+
+        /* ===========================================
+           BASE STYLES
+           =========================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-snap-type: y mandatory;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            background: radial-gradient(circle at 50% -20%, var(--accent-glow) 0%, var(--bg-primary) 60%);
+            background-attachment: fixed;
+        }
+
+        /* Radar Background Animation */
+        .radar-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .radar-circle {
+            position: absolute;
+            width: 80vh;
+            height: 80vh;
+            border: 1px solid rgba(16, 185, 129, 0.08);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 4s infinite ease-out;
+        }
+
+        .radar-circle::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 40vh; height: 40vh;
+            border: 1px solid rgba(16, 185, 129, 0.12);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            font-family: var(--font-display);
+            line-height: 1.1;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-size: clamp(3.5rem, 7vw, 6rem);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+        
+        h3 {
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            letter-spacing: 0.1em;
+        }
+
+        p, li {
+            font-size: clamp(1.1rem, 1.5vw, 1.35rem);
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 1.2rem;
+        }
+
+        ul {
+            list-style-type: none;
+        }
+
+        li {
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        li::before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--accent);
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        /* ===========================================
+           SLIDE CONTAINER
+           =========================================== */
+        .slide {
+            min-height: 100vh;
+            padding: var(--slide-padding);
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            max-width: 1400px;
+            margin: 0 auto;
+            z-index: 1;
+        }
+        
+        .slide-content {
+            max-width: 1000px;
+            position: relative;
+        }
+
+        /* ===========================================
+           COMPONENTS
+           =========================================== */
+        .tag {
+            font-family: monospace;
+            color: var(--accent);
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.4rem 0.8rem;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 2.5rem;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.05);
+        }
+
+        /* Progress Bar & Nav */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: var(--accent);
+            width: 0%;
+            z-index: 100;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .nav-dots {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            z-index: 100;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: var(--accent);
+            transform: scale(2);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .keyboard-hint {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            font-size: 0.8rem;
+            font-family: monospace;
+            color: rgba(255,255,255,0.3);
+            z-index: 100;
+            letter-spacing: 0.05em;
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal-blur {
+            opacity: 0;
+            filter: blur(10px);
+            transform: scale(0.95);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        filter var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .visible .reveal-blur {
+            opacity: 1;
+            filter: blur(0);
+            transform: scale(1);
+        }
+
+        .reveal-blur:nth-child(1) { transition-delay: 0.1s; }
+        .reveal-blur:nth-child(2) { transition-delay: 0.3s; }
+        .reveal-blur:nth-child(3) { transition-delay: 0.5s; }
+        .reveal-blur:nth-child(4) { transition-delay: 0.7s; }
+        .reveal-blur:nth-child(5) { transition-delay: 0.9s; }
+        
+        /* Agent Graph Styles */
+        .agent-team {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .agent-node {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            padding: 1rem 1.5rem;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .agent-node span {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: var(--accent);
+            letter-spacing: 0.05em;
+            margin-top: 0.4rem;
+        }
+
+        @media (max-width: 768px) {
+            .nav-dots, .keyboard-hint { display: none; }
+            .grid-2 { grid-template-columns: 1fr; gap: 2rem; }
+            .slide { padding: 2rem; }
+            .radar-circle { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="radar-bg">
+        <div class="radar-circle"></div>
+    </div>
+    
+    <div class="progress-bar" id="progressBar"></div>
+    <nav class="nav-dots" id="navDots"></nav>
+    <div class="keyboard-hint">[ USE ARROWS / SPACE / SCROLL ]</div>
+
+    <!-- Slide 1: Title -->
+    <section class="slide" id="slide-1">
+        <div class="slide-content">
+            <div class="reveal-blur tag">[ BAND OF AGENTS HACKATHON // TRACK 3 ]</div>
+            <h1 class="reveal-blur">ATC Guardian</h1>
+            <p class="reveal-blur">A cross-framework, multi-agent decision-support system for Air Traffic Control.</p>
+            <br>
+            <div class="reveal-blur" style="margin-top: 2.5rem;">
+                <p style="color: var(--accent); font-family: monospace; font-size: 1rem; margin-bottom: 1rem; letter-spacing: 0.1em;">> ENGINEERING TEAM:</p>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <span style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.6rem 1.2rem; font-family: var(--font-display); font-size: 1.1rem; color: #fff; border-radius: 4px; box-shadow: 0 0 15px rgba(16,185,129,0.05); letter-spacing: 0.05em; text-transform: uppercase;">Vedant Tong</span>
+                    <span style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.6rem 1.2rem; font-family: var(--font-display); font-size: 1.1rem; color: #fff; border-radius: 4px; box-shadow: 0 0 15px rgba(16,185,129,0.05); letter-spacing: 0.05em; text-transform: uppercase;">Vinit Gaikwad</span>
+                    <span style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.6rem 1.2rem; font-family: var(--font-display); font-size: 1.1rem; color: #fff; border-radius: 4px; box-shadow: 0 0 15px rgba(16,185,129,0.05); letter-spacing: 0.05em; text-transform: uppercase;">Jayashri Utranakar</span>
+                    <span style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.6rem 1.2rem; font-family: var(--font-display); font-size: 1.1rem; color: #fff; border-radius: 4px; box-shadow: 0 0 15px rgba(16,185,129,0.05); letter-spacing: 0.05em; text-transform: uppercase;">Tanishq Agarwal</span>
+                </div>
+            </div>
+    </section>
+
+    <!-- Slide 2: The Problem -->
+    <section class="slide" id="slide-2">
+        <div class="slide-content">
+            <div class="reveal-blur tag">[ PROBLEM STATEMENT ]</div>
+            <h2 class="reveal-blur">High-Stakes Environments Demand More</h2>
+            <div class="reveal-blur">
+                <p>Air traffic control is a regulated, zero-margin-for-error domain. Most AI agents today operate alone, locked inside one environment or a single workflow.</p>
+                <ul>
+                    <li>Single-agent chatbots cannot handle multi-faceted complex situations.</li>
+                    <li>Opaque decision-making violates regulatory compliance needs.</li>
+                    <li>Fully autonomous execution is highly dangerous without human oversight.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: The Solution -->
+    <section class="slide" id="slide-3">
+        <div class="grid-2">
+            <div class="slide-content">
+                <div class="reveal-blur tag">[ ARCHITECTURE ]</div>
+                <h2 class="reveal-blur">AI-Assisted, Human-Decided</h2>
+                <p class="reveal-blur">We built a system where specialised AI agents collaborate through <b>Band</b> to help human controllers detect conflicts, analyse weather, and coordinate emergencies.</p>
+                <p class="reveal-blur" style="color: var(--text-primary);"><b>The Golden Rule:</b> Agents detect, review, and recommend — but the human controller holds the only authority to execute.</p>
+            </div>
+            <div class="card reveal-blur">
+                <h3>Core Pillars</h3>
+                <ul>
+                    <li>Cross-Framework Collaboration</li>
+                    <li>Adversarial Review Loop</li>
+                    <li>Human-on-the-Loop Architecture</li>
+                    <li>Regulator-Ready Audit Trails</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: The Agent Team -->
+    <section class="slide" id="slide-4">
+        <div class="slide-content" style="max-width: 100%;">
+            <div class="reveal-blur tag">[ CROSS-FRAMEWORK TEAM ]</div>
+            <h2 class="reveal-blur">6 Specialists, 1 Band Room</h2>
+            <p class="reveal-blur">ATC Guardian demonstrates what becomes possible when agents from <b>three different frameworks</b> discover each other and coordinate work through Band.</p>
+            
+            <div class="reveal-blur" style="margin-top: 2rem;">
+                <svg viewBox="0 0 800 300" width="100%" height="300px" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="glow" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.2"/>
+                            <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.8"/>
+                        </linearGradient>
+                        <filter id="blur">
+                            <feGaussianBlur stdDeviation="3" />
+                        </filter>
+                    </defs>
+                    <!-- Central Node: Band -->
+                    <circle cx="400" cy="150" r="40" fill="rgba(16, 185, 129, 0.2)" stroke="var(--accent)" stroke-width="2">
+                        <animate attributeName="r" values="35; 42; 35" dur="3s" repeatCount="indefinite" />
+                    </circle>
+                    <text x="400" y="155" fill="#fff" font-family="monospace" font-size="16" text-anchor="middle" font-weight="bold">BAND</text>
+                    
+                    <!-- Lines connecting Band to Agents -->
+                    <g stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6">
+                        <line x1="400" y1="150" x2="150" y2="70"><animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite"/></line>
+                        <line x1="400" y1="150" x2="150" y2="230"><animate attributeName="stroke-dashoffset" from="100" to="0" dur="2.5s" repeatCount="indefinite"/></line>
+                        <line x1="400" y1="150" x2="400" y2="40"><animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.5s" repeatCount="indefinite"/></line>
+                        <line x1="400" y1="150" x2="400" y2="260"><animate attributeName="stroke-dashoffset" from="100" to="0" dur="3s" repeatCount="indefinite"/></line>
+                        <line x1="400" y1="150" x2="650" y2="70"><animate attributeName="stroke-dashoffset" from="100" to="0" dur="2.2s" repeatCount="indefinite"/></line>
+                        <line x1="400" y1="150" x2="650" y2="230"><animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.8s" repeatCount="indefinite"/></line>
+                    </g>
+                    
+                    <!-- Nodes -->
+                    <!-- Top Left -->
+                    <rect x="70" y="45" width="160" height="50" rx="6" fill="rgba(0,0,0,0.8)" stroke="var(--accent)" />
+                    <text x="150" y="65" fill="#fff" font-family="monospace" font-size="12" text-anchor="middle">Coordinator</text>
+                    <text x="150" y="80" fill="var(--text-secondary)" font-family="monospace" font-size="10" text-anchor="middle">LangGraph</text>
+                    
+                    <!-- Bottom Left -->
+                    <rect x="70" y="205" width="160" height="50" rx="6" fill="rgba(0,0,0,0.8)" stroke="var(--accent)" />
+                    <text x="150" y="225" fill="#fff" font-family="monospace" font-size="12" text-anchor="middle">Conflict Detector</text>
+                    <text x="150" y="240" fill="var(--text-secondary)" font-family="monospace" font-size="10" text-anchor="middle">Pydantic AI</text>
+                    
+                    <!-- Top Middle -->
+                    <rect x="320" y="15" width="160" height="50" rx="6" fill="rgba(0,0,0,0.8)" stroke="var(--accent)" />
+                    <text x="400" y="35" fill="#fff" font-family="monospace" font-size="12" text-anchor="middle">Weather Analyst</text>
+                    <text x="400" y="50" fill="var(--text-secondary)" font-family="monospace" font-size="10" text-anchor="middle">CrewAI</text>
+                    
+                    <!-- Bottom Middle -->
+                    <rect x="320" y="235" width="160" height="50" rx="6" fill="rgba(0,0,0,0.8)" stroke="var(--danger)" stroke-width="2" />
+                    <text x="400" y="255" fill="var(--danger)" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">Safety Reviewer</text>
+                    <text x="400" y="270" fill="var(--text-secondary)" font-family="monospace" font-size="10" text-anchor="middle">Pydantic AI</text>
+
+                    <!-- Top Right -->
+                    <rect x="570" y="45" width="160" height="50" rx="6" fill="rgba(0,0,0,0.8)" stroke="var(--accent)" />
+                    <text x="650" y="65" fill="#fff" font-family="monospace" font-size="12" text-anchor="middle">Ground Ops</text>
+                    <text x="650" y="80" fill="var(--text-secondary)" font-family="monospace" font-size="10" text-anchor="middle">LangGraph</text>
+
+                    <!-- Bottom Right -->
+                    <rect x="570" y="205" width="160" height="50" rx="6" fill="rgba(0,0,0,0.8)" stroke="var(--warning)" stroke-width="2" />
+                    <text x="650" y="225" fill="var(--warning)" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">Emergency Resp.</text>
+                    <text x="650" y="240" fill="var(--text-secondary)" font-family="monospace" font-size="10" text-anchor="middle">LangGraph</text>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: The Collaboration Loop -->
+    <section class="slide" id="slide-5">
+        <div class="slide-content">
+            <div class="reveal-blur tag">[ DATA FLOW ]</div>
+            <h2 class="reveal-blur">The Collaboration Cascade</h2>
+            <div class="reveal-blur" style="background: rgba(0,0,0,0.4); padding: 2rem; border-radius: 12px; border: 1px solid rgba(16,185,129,0.2);">
+                <svg viewBox="0 0 900 120" width="100%" height="120px" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="var(--accent)" />
+                        </marker>
+                    </defs>
+                    <!-- Flow lines -->
+                    <line x1="120" y1="60" x2="250" y2="60" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="390" y1="60" x2="520" y2="60" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrowhead)" />
+                    <line x1="660" y1="60" x2="780" y2="60" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrowhead)" />
+
+                    <!-- Animated dots moving along lines -->
+                    <circle cx="0" cy="60" r="4" fill="var(--accent)">
+                        <animate attributeName="cx" values="120; 250" dur="2s" repeatCount="indefinite" />
+                        <animate attributeName="opacity" values="1; 1; 0" dur="2s" repeatCount="indefinite" />
+                    </circle>
+                    <circle cx="0" cy="60" r="4" fill="var(--danger)">
+                        <animate attributeName="cx" values="390; 520" dur="2s" repeatCount="indefinite" begin="1s"/>
+                        <animate attributeName="opacity" values="1; 1; 0" dur="2s" repeatCount="indefinite" begin="1s"/>
+                    </circle>
+                    <circle cx="0" cy="60" r="4" fill="#3b82f6">
+                        <animate attributeName="cx" values="660; 780" dur="2s" repeatCount="indefinite" begin="2s"/>
+                        <animate attributeName="opacity" values="1; 1; 0" dur="2s" repeatCount="indefinite" begin="2s"/>
+                    </circle>
+
+                    <!-- Boxes -->
+                    <rect x="0" y="30" width="120" height="60" rx="4" fill="rgba(16,185,129,0.1)" stroke="var(--accent)" />
+                    <text x="60" y="65" fill="#fff" font-family="monospace" font-size="12" text-anchor="middle">Specialist</text>
+
+                    <rect x="250" y="30" width="140" height="60" rx="4" fill="rgba(239,68,68,0.1)" stroke="var(--danger)" />
+                    <text x="320" y="55" fill="var(--danger)" font-family="monospace" font-size="12" text-anchor="middle">Safety Reviewer</text>
+                    <text x="320" y="75" fill="var(--text-secondary)" font-family="monospace" font-size="10" text-anchor="middle">[Verdict]</text>
+
+                    <rect x="520" y="30" width="140" height="60" rx="4" fill="rgba(59,130,246,0.1)" stroke="#3b82f6" />
+                    <text x="590" y="55" fill="#3b82f6" font-family="monospace" font-size="12" text-anchor="middle">Coordinator</text>
+                    <text x="590" y="75" fill="var(--text-secondary)" font-family="monospace" font-size="10" text-anchor="middle">[Decision Prop]</text>
+
+                    <rect x="780" y="30" width="120" height="60" rx="4" fill="rgba(255,255,255,0.1)" stroke="#fff" stroke-width="2"/>
+                    <text x="840" y="65" fill="#fff" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">CONTROLLER</text>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: Emergency Veto -->
+    <section class="slide" id="slide-6">
+        <div class="slide-content">
+            <div class="reveal-blur tag" style="color: var(--danger); background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">[ PRIORITY OVERRIDE ]</div>
+            <h2 class="reveal-blur">The Emergency Veto (7700)</h2>
+            <p class="reveal-blur">For an emergency squawk, the loop expands dynamically to recruit Ground Ops for runway info.</p>
+            <p class="reveal-blur">Crucially, the Emergency Response agent holds <b>veto power</b>: while an emergency is active, lower-priority conflict and weather dispatches are deferred per real-world ATC priority rules.</p>
+        </div>
+    </section>
+
+    <!-- Slide 7: Audit & Compliance -->
+    <section class="slide" id="slide-7">
+        <div class="grid-2">
+            <div class="slide-content">
+                <div class="reveal-blur tag">[ COMPLIANCE ]</div>
+                <h2 class="reveal-blur">Regulator-Ready Audit Trails</h2>
+                <p class="reveal-blur">Every agent action is logged for regulatory compliance. Band events (`thought`, `tool_call`, `tool_result`) flow seamlessly into the audit timeline.</p>
+                <p class="reveal-blur">Generate a one-click JSON incident report with the full agent reasoning trail and controller decisions.</p>
+            </div>
+            <div class="card reveal-blur" style="border-left: 4px solid var(--accent);">
+                <h3 style="margin-bottom: 0.5rem;">Adversarial Review</h3>
+                <p style="font-size: 1.1rem; color: #fff;">An independent Safety Reviewer cross-examines every advisory against ICAO minima before it reaches the human gate. The safety agent can OVERRIDE, REJECT, or APPROVE peer outputs.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 8: Technology & Partner Tools -->
+    <section class="slide" id="slide-8">
+        <div class="slide-content">
+            <div class="reveal-blur tag">[ AI/ML API INTEGRATION ]</div>
+            <h2 class="reveal-blur">Best Model for the Job</h2>
+            <p class="reveal-blur">We target the AI/ML API prize by using principled, per-agent model choices rather than forcing a single model everywhere.</p>
+            <ul class="reveal-blur">
+                <li><b>DeepSeek-V4-Pro:</b> Deep reasoning + reliable JSON for CPA math (Conflict & Weather).</li>
+                <li><b>Zhipu GLM-5.1:</b> Deterministic parsing at temp=0 for Safety Review & Emergency class.</li>
+                <li><b>Moonshot Kimi:</b> Long-context instruction following for Coordinator dispatch.</li>
+                <li><b>DeepSeek-V4-Flash:</b> Fast, cheap tool-calls for Ground Ops lookups.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 9: Business Value & Market -->
+    <section class="slide" id="slide-9">
+        <div class="slide-content">
+            <div class="reveal-blur tag">[ BUSINESS VALUE ]</div>
+            <h2 class="reveal-blur">Beyond Aviation</h2>
+            <p class="reveal-blur">While designed for ATC, this architecture solves the core problem of <b>any high-stakes enterprise workflow</b>.</p>
+            <p class="reveal-blur">Financial services (approvals), legal review (contracts), and healthcare (coordination) all require the same primitives:</p>
+            <ul class="reveal-blur">
+                <li>Specialised agents with distinct knowledge.</li>
+                <li>Adversarial review + Human-in-the-loop gates.</li>
+                <li>Cryptographically verifiable audit logs.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Slide 10: Outro -->
+    <section class="slide" id="slide-10">
+        <div class="slide-content" style="text-align: center; max-width: 800px; margin: 0 auto;">
+            <div class="radar-bg" style="position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; z-index: -1;"></div>
+            <h2 class="reveal-blur">END OF TRANSMISSION</h2>
+            <p class="reveal-blur" style="color: var(--text-primary); font-family: var(--font-display); font-size: 2rem;">ATC Guardian</p>
+            <p class="reveal-blur" style="font-size: 1.2rem; margin-top: 2rem;">Ready for live demonstration.</p>
+            <div class="reveal-blur" style="margin-top: 3rem;">
+                <span class="tag">Band of Agents Hackathon 2026</span>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isAnimating = false;
+                
+                this.initObserver();
+                this.initNav();
+                this.bindEvents();
+                this.updateState();
+            }
+
+            initObserver() {
+                const options = {
+                    root: null,
+                    rootMargin: '0px',
+                    threshold: 0.5
+                };
+
+                this.observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            // Update current slide based on scroll
+                            this.currentSlide = Array.from(this.slides).indexOf(entry.target);
+                            this.updateState(false); // false = don't scroll again
+                        }
+                    });
+                }, options);
+
+                this.slides.forEach(slide => this.observer.observe(slide));
+            }
+
+            initNav() {
+                const navContainer = document.getElementById('navDots');
+                this.slides.forEach((_, index) => {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    dot.addEventListener('click', () => this.goToSlide(index));
+                    navContainer.appendChild(dot);
+                });
+            }
+
+            bindEvents() {
+                window.addEventListener('keydown', (e) => {
+                    if (this.isAnimating) return;
+                    
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+                        e.preventDefault();
+                        this.nextSlide();
+                    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        this.prevSlide();
+                    }
+                });
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.currentSlide = index;
+                    this.updateState(true);
+                }
+            }
+
+            nextSlide() {
+                this.goToSlide(this.currentSlide + 1);
+            }
+
+            prevSlide() {
+                this.goToSlide(this.currentSlide - 1);
+            }
+
+            updateState(shouldScroll = true) {
+                // Update Progress Bar
+                const progress = ((this.currentSlide) / (this.slides.length - 1)) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+
+                // Update Dots
+                const dots = document.querySelectorAll('.dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+
+                // Scroll to slide
+                if (shouldScroll) {
+                    this.isAnimating = true;
+                    this.slides[this.currentSlide].scrollIntoView({ behavior: 'smooth' });
+                    setTimeout(() => { this.isAnimating = false; }, 800);
+                }
+            }
+        }
+
+        // Initialize presentation
+        document.addEventListener('DOMContentLoaded', () => {
+            new SlidePresentation();
+        });
+    </script>
+</body>
+</html>

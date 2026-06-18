@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ATC Guardian adversarial review + human gate — animated verdict flow.
+     An advisory enters, the Safety Reviewer cross-examines it against
+     ICAO minima, returns APPROVE/REJECT/MODIFY, and the controller
+     holds final authority. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" role="img" aria-label="Animated diagram of the adversarial safety review and human-on-the-loop approval gate">
+  <defs>
+    <linearGradient id="gateBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06120c"/>
+      <stop offset="100%" stop-color="#020806"/>
+    </linearGradient>
+    <marker id="gateArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2a6a44"/>
+    </marker>
+  </defs>
+
+  <rect width="920" height="380" fill="url(#gateBg)"/>
+  <rect x="10" y="10" width="900" height="360" rx="10" fill="none" stroke="#143a23" stroke-width="1"/>
+
+  <g font-family="'SF Mono','Consolas',monospace">
+    <text x="40" y="42" fill="#2dff6b" font-size="14" font-weight="700" letter-spacing="2">ADVERSARIAL REVIEW + HUMAN GATE</text>
+    <text x="40" y="60" fill="#4a8a64" font-size="10.5" letter-spacing="1">no agent action is final until an independent reviewer and the controller both sign off</text>
+  </g>
+
+  <!-- advisory in -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="40" y="150" width="150" height="80" rx="8" fill="#2e1a06" stroke="#ffaa00" stroke-width="1.2"/>
+    <text x="115" y="174" text-anchor="middle" fill="#ffaa00" font-size="10.5" font-weight="700">ADVISORY</text>
+    <text x="115" y="192" text-anchor="middle" fill="#a87a30" font-size="9">conflict-detector</text>
+    <text x="115" y="207" text-anchor="middle" fill="#a87a30" font-size="9">CPA 2.4nm / 92s</text>
+    <text x="115" y="222" text-anchor="middle" fill="#a87a30" font-size="9">vector 090, descend</text>
+  </g>
+
+  <!-- safety reviewer -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="260" y="130" width="200" height="120" rx="8" fill="#1a0e2e" stroke="#aa33ff" stroke-width="1.4"/>
+    <text x="360" y="154" text-anchor="middle" fill="#aa33ff" font-size="11" font-weight="700" letter-spacing="1">SAFETY REVIEWER</text>
+    <text x="360" y="172" text-anchor="middle" fill="#6a4a8a" font-size="9">Pydantic AI · temp 0</text>
+    <!-- ICAO checks -->
+    <text x="280" y="196" fill="#6a4a8a" font-size="9">lateral min 5.0nm ........</text>
+    <text x="280" y="212" fill="#6a4a8a" font-size="9">vertical min 1000ft .....</text>
+    <text x="280" y="228" fill="#6a4a8a" font-size="9">look-ahead 300s .........</text>
+    <!-- scanning line -->
+    <rect x="276" y="184" width="170" height="2" fill="#aa33ff" opacity="0.6">
+      <animate attributeName="y" values="184;232;184" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+
+  <!-- verdict badges (cycle) -->
+  <g font-family="'SF Mono',monospace">
+    <g>
+      <rect x="500" y="140" width="110" height="30" rx="6" fill="#0e2e1c" stroke="#2dff6b" stroke-width="1.2"/>
+      <text x="555" y="160" text-anchor="middle" fill="#2dff6b" font-size="11" font-weight="700">APPROVE</text>
+      <animate attributeName="opacity" values="1;1;0.18;0.18;1" keyTimes="0;0.33;0.34;0.66;0.67" dur="4.8s" repeatCount="indefinite"/>
+    </g>
+    <g>
+      <rect x="500" y="178" width="110" height="30" rx="6" fill="#2e1a06" stroke="#ffaa00" stroke-width="1.2"/>
+      <text x="555" y="198" text-anchor="middle" fill="#ffaa00" font-size="11" font-weight="700">MODIFY</text>
+      <animate attributeName="opacity" values="0.18;0.18;1;1;0.18" keyTimes="0;0.33;0.34;0.66;0.67" dur="4.8s" repeatCount="indefinite"/>
+    </g>
+    <g>
+      <rect x="500" y="216" width="110" height="30" rx="6" fill="#2e0606" stroke="#ff3333" stroke-width="1.2"/>
+      <text x="555" y="236" text-anchor="middle" fill="#ff3333" font-size="11" font-weight="700">REJECT</text>
+      <animate attributeName="opacity" values="0.18;0.18;0.18;0.18;0.18;1;0.18" keyTimes="0;0.2;0.33;0.34;0.66;0.67;0.8" dur="4.8s" repeatCount="indefinite"/>
+    </g>
+  </g>
+
+  <!-- coordinator -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="660" y="150" width="150" height="80" rx="8" fill="#0e1a2e" stroke="#4488ff" stroke-width="1.2"/>
+    <text x="735" y="174" text-anchor="middle" fill="#4488ff" font-size="10.5" font-weight="700">COORDINATOR</text>
+    <text x="735" y="192" text-anchor="middle" fill="#4a6a9a" font-size="9">queues pending</text>
+    <text x="735" y="207" text-anchor="middle" fill="#4a6a9a" font-size="9">decision for the</text>
+    <text x="735" y="222" text-anchor="middle" fill="#4a6a9a" font-size="9">controller</text>
+  </g>
+
+  <!-- controller gate -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="350" y="288" width="220" height="56" rx="10" fill="#0a1a12" stroke="#7aff9e" stroke-width="1.6"/>
+    <circle cx="378" cy="316" r="10" fill="none" stroke="#7aff9e" stroke-width="1.5"/>
+    <circle cx="378" cy="312" r="3.8" fill="#7aff9e"/>
+    <path d="M 372 322 Q 378 316 384 322" fill="none" stroke="#7aff9e" stroke-width="1.5"/>
+    <text x="470" y="312" text-anchor="middle" fill="#7aff9e" font-size="11.5" font-weight="700" letter-spacing="1">CONTROLLER</text>
+    <text x="470" y="328" text-anchor="middle" fill="#4a8a64" font-size="8.5">sole authority to execute</text>
+    <circle cx="378" cy="316" r="10" fill="none" stroke="#7aff9e" stroke-width="1.2" opacity="0.6">
+      <animate attributeName="r" values="10;18;10" dur="2.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.7;0;0.7" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- arrows -->
+  <g fill="none" stroke="#2a6a44" stroke-width="1.2">
+    <path d="M 190 190 L 260 190" marker-end="url(#gateArrow)"/>
+    <path d="M 460 190 L 500 190" marker-end="url(#gateArrow)"/>
+    <path d="M 610 190 L 660 190" marker-end="url(#gateArrow)"/>
+    <path d="M 735 230 C 735 280, 600 300, 570 316" marker-end="url(#gateArrow)"/>
+  </g>
+
+  <!-- reject loop arrow back -->
+  <g fill="none" stroke="#5a1a1a" stroke-width="1" stroke-dasharray="3 3">
+    <path d="M 500 231 C 420 270, 280 270, 260 230" marker-end="url(#gateArrow)"/>
+    <text x="350" y="262" font-family="'SF Mono',monospace" font-size="8.5" fill="#9a3030" text-anchor="middle">REJECT → advisory discarded, logged</text>
+  </g>
+
+  <!-- legend -->
+  <g font-family="'SF Mono',monospace" font-size="9" fill="#4a8a64">
+    <text x="40" y="356">every verdict and controller resolution is written to the audit timeline and the regulator-ready incident export</text>
+  </g>
+</svg>

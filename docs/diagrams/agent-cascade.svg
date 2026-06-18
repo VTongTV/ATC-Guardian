@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ATC Guardian agent collaboration cascade — animated @mention flow
+     across six cross-framework agents in a single Band room.
+     Nodes flash in collaboration-chain order on a repeating loop. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 460" role="img" aria-label="Animated diagram of six agents collaborating through Band via @mentions">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06120c"/>
+      <stop offset="100%" stop-color="#020806"/>
+    </linearGradient>
+    <marker id="arrowNominal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2a6a44"/>
+    </marker>
+    <marker id="arrowActive" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2dff6b"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="460" fill="url(#bgGrad)"/>
+  <rect x="10" y="10" width="880" height="440" rx="10" fill="none" stroke="#143a23" stroke-width="1"/>
+
+  <!-- Title -->
+  <g font-family="'SF Mono','Consolas',monospace">
+    <text x="40" y="42" fill="#2dff6b" font-size="14" font-weight="700" letter-spacing="2">COLLABORATION CASCADE</text>
+    <text x="40" y="60" fill="#4a8a64" font-size="10.5" letter-spacing="1">detect → @mention → advisory → adversarial review → human gate</text>
+  </g>
+
+  <!-- Band room frame -->
+  <g>
+    <rect x="60" y="95" width="780" height="250" rx="14" fill="#04150c" stroke="#1d5a36" stroke-width="1" stroke-dasharray="6 5"/>
+    <rect x="60" y="95" width="780" height="26" rx="14" fill="#0a2a18"/>
+    <rect x="60" y="115" width="780" height="6" fill="#0a2a18"/>
+    <text x="78" y="113" font-family="'SF Mono',monospace" font-size="10.5" fill="#2dff6b" letter-spacing="2">BAND ROOM · 6 cross-framework agents · structured context exchange</text>
+    <circle cx="816" cy="108" r="3.5" fill="#2dff6b">
+      <animate attributeName="opacity" values="1;0.3;1" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <text x="826" y="112" font-family="'SF Mono',monospace" font-size="9" fill="#4a8a64">LIVE</text>
+  </g>
+
+  <!-- Static edges (faint) -->
+  <g stroke="#1d5a36" stroke-width="1" fill="none" opacity="0.55">
+    <path d="M 140 230 C 220 230, 240 175, 300 175" marker-end="url(#arrowNominal)"/>
+    <path d="M 380 175 C 460 175, 480 230, 540 230" marker-end="url(#arrowNominal)"/>
+    <path d="M 620 230 C 690 230, 700 175, 760 175" marker-end="url(#arrowNominal)"/>
+    <path d="M 540 250 C 470 250, 460 305, 380 305" marker-end="url(#arrowNominal)"/>
+  </g>
+
+  <!-- Animated @mention packet traveling along the main cascade -->
+  <g>
+    <!-- packet 1: system -> conflict-detector -->
+    <circle r="5" fill="#39ff7a">
+      <animateMotion dur="6s" repeatCount="indefinite" rotate="auto"
+        path="M 140 230 C 220 230, 240 175, 300 175"/>
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.18;0.2" dur="6s" repeatCount="indefinite"/>
+    </circle>
+    <!-- packet 2: conflict-detector -> safety-reviewer -->
+    <circle r="5" fill="#aa33ff">
+      <animateMotion dur="6s" repeatCount="indefinite" rotate="auto"
+        path="M 380 175 C 460 175, 480 230, 540 230"/>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.2;0.25;0.45;0.5" dur="6s" repeatCount="indefinite"/>
+    </circle>
+    <!-- packet 3: safety-reviewer -> coordinator -->
+    <circle r="5" fill="#4488ff">
+      <animateMotion dur="6s" repeatCount="indefinite" rotate="auto"
+        path="M 620 230 C 690 230, 700 175, 760 175"/>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.5;0.55;0.75;0.8" dur="6s" repeatCount="indefinite"/>
+    </circle>
+    <!-- packet 4: coordinator -> controller (human) -->
+    <circle r="5" fill="#2dff6b">
+      <animateMotion dur="6s" repeatCount="indefinite" rotate="auto"
+        path="M 800 175 C 830 175, 830 360, 470 360"/>
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.8;0.85;0.97;1" dur="6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Nodes -->
+  <!-- system-ingest -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="80" y="212" width="120" height="38" rx="6" fill="#082414" stroke="#2dff6b" stroke-width="1.2">
+      <animate attributeName="stroke" values="#2dff6b;#7aff9e;#2dff6b" dur="6s" keyTimes="0;0.1;0.2" repeatCount="indefinite"/>
+    </rect>
+    <text x="140" y="231" text-anchor="middle" fill="#2dff6b" font-size="11" font-weight="700">SYSTEM</text>
+    <text x="140" y="244" text-anchor="middle" fill="#4a8a64" font-size="8.5">radar / CPA / 7700</text>
+  </g>
+
+  <!-- conflict-detector -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="280" y="156" width="120" height="38" rx="6" fill="#2e1a06" stroke="#ffaa00" stroke-width="1.2">
+      <animate attributeName="stroke-width" values="1.2;2.4;1.2" dur="6s" keyTimes="0.15;0.25;0.35" repeatCount="indefinite"/>
+      <animate attributeName="fill" values="#2e1a06;#3a2408;#2e1a06" dur="6s" keyTimes="0.15;0.25;0.35" repeatCount="indefinite"/>
+    </rect>
+    <text x="340" y="175" text-anchor="middle" fill="#ffaa00" font-size="11" font-weight="700">CONFLICT</text>
+    <text x="340" y="188" text-anchor="middle" fill="#a87a30" font-size="8.5">Pydantic AI · CPA</text>
+  </g>
+
+  <!-- safety-reviewer -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="520" y="212" width="120" height="38" rx="6" fill="#1a0e2e" stroke="#aa33ff" stroke-width="1.2">
+      <animate attributeName="stroke-width" values="1.2;2.4;1.2" dur="6s" keyTimes="0.4;0.5;0.6" repeatCount="indefinite"/>
+      <animate attributeName="fill" values="#1a0e2e;#241238;#1a0e2e" dur="6s" keyTimes="0.4;0.5;0.6" repeatCount="indefinite"/>
+    </rect>
+    <text x="580" y="231" text-anchor="middle" fill="#aa33ff" font-size="11" font-weight="700">SAFETY REVIEWER</text>
+    <text x="580" y="244" text-anchor="middle" fill="#6a4a8a" font-size="8.5">Pydantic AI · adversarial</text>
+  </g>
+
+  <!-- coordinator -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="740" y="156" width="120" height="38" rx="6" fill="#0e1a2e" stroke="#4488ff" stroke-width="1.2">
+      <animate attributeName="stroke-width" values="1.2;2.4;1.2" dur="6s" keyTimes="0.65;0.75;0.85" repeatCount="indefinite"/>
+      <animate attributeName="fill" values="#0e1a2e;#16243a;#0e1a2e" dur="6s" keyTimes="0.65;0.75;0.85" repeatCount="indefinite"/>
+    </rect>
+    <text x="800" y="175" text-anchor="middle" fill="#4488ff" font-size="11" font-weight="700">COORDINATOR</text>
+    <text x="800" y="188" text-anchor="middle" fill="#4a6a9a" font-size="8.5">LangGraph · dispatch</text>
+  </g>
+
+  <!-- weather-analyst (parallel specialist) -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="280" y="286" width="120" height="38" rx="6" fill="#062a2a" stroke="#33ccff" stroke-width="1.2"/>
+    <text x="340" y="305" text-anchor="middle" fill="#33ccff" font-size="11" font-weight="700">WEATHER</text>
+    <text x="340" y="318" text-anchor="middle" fill="#2a7a8a" font-size="8.5">CrewAI · SIGMET</text>
+  </g>
+
+  <!-- ground-ops -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="520" y="286" width="120" height="38" rx="6" fill="#08240e" stroke="#33ff33" stroke-width="1.2"/>
+    <text x="580" y="305" text-anchor="middle" fill="#33ff33" font-size="11" font-weight="700">GROUND OPS</text>
+    <text x="580" y="318" text-anchor="middle" fill="#2a7a2a" font-size="8.5">LangGraph · runways</text>
+  </g>
+
+  <!-- emergency-response (veto holder) -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="740" y="286" width="120" height="38" rx="6" fill="#2e0606" stroke="#ff3333" stroke-width="1.2">
+      <animate attributeName="stroke-width" values="1.2;1.2;2.2;1.2" dur="6s" keyTimes="0;0.45;0.5;0.55" repeatCount="indefinite"/>
+    </rect>
+    <text x="800" y="305" text-anchor="middle" fill="#ff3333" font-size="11" font-weight="700">EMERGENCY</text>
+    <text x="800" y="318" text-anchor="middle" fill="#9a3030" font-size="8.5">LangGraph · 7700 · VETO</text>
+  </g>
+
+  <!-- Human controller gate -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="380" y="370" width="180" height="46" rx="8" fill="#0a1a12" stroke="#7aff9e" stroke-width="1.6"/>
+    <circle cx="406" cy="393" r="9" fill="none" stroke="#7aff9e" stroke-width="1.4"/>
+    <circle cx="406" cy="389" r="3.5" fill="#7aff9e"/>
+    <path d="M 400 399 Q 406 393 412 399" fill="none" stroke="#7aff9e" stroke-width="1.4"/>
+    <text x="492" y="389" text-anchor="middle" fill="#7aff9e" font-size="11.5" font-weight="700" letter-spacing="1">CONTROLLER</text>
+    <text x="492" y="404" text-anchor="middle" fill="#4a8a64" font-size="9">human-on-the-loop · APPROVE / REJECT</text>
+  </g>
+
+  <!-- Legend -->
+  <g font-family="'SF Mono',monospace" font-size="9.5" fill="#4a8a64">
+    <g transform="translate(40 438)">
+      <rect x="0" y="-9" width="10" height="10" fill="#0e1a2e" stroke="#4488ff"/>
+      <text x="16" y="0">LangGraph</text>
+      <rect x="92" y="-9" width="10" height="10" fill="#2e1a06" stroke="#ffaa00"/>
+      <text x="108" y="0">Pydantic AI</text>
+      <rect x="190" y="-9" width="10" height="10" fill="#062a2a" stroke="#33ccff"/>
+      <text x="206" y="0">CrewAI</text>
+      <text x="270" y="0" fill="#7aff9e">@mention packets travel the cascade in real time</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ATC Guardian system architecture — animated data-flow diagram.
+     Radar → FastAPI → BandClient (sim|live) → Band room, with the
+     AdvisoryIngester feeding the audit timeline and decision gate. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 520" role="img" aria-label="Animated system architecture diagram for ATC Guardian">
+  <defs>
+    <linearGradient id="archBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06120c"/>
+      <stop offset="100%" stop-color="#020806"/>
+    </linearGradient>
+    <marker id="archArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2a6a44"/>
+    </marker>
+  </defs>
+
+  <rect width="940" height="520" fill="url(#archBg)"/>
+  <rect x="10" y="10" width="920" height="500" rx="10" fill="none" stroke="#143a23" stroke-width="1"/>
+
+  <g font-family="'SF Mono','Consolas',monospace">
+    <text x="40" y="42" fill="#2dff6b" font-size="14" font-weight="700" letter-spacing="2">SYSTEM ARCHITECTURE</text>
+    <text x="40" y="60" fill="#4a8a64" font-size="10.5" letter-spacing="1">offline-first · the same BandClient code runs in sim (zero credentials) and live (real Band)</text>
+  </g>
+
+  <!-- Browser / frontend -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="40" y="110" width="180" height="120" rx="8" fill="#0a1a12" stroke="#2dff6b" stroke-width="1.2"/>
+    <text x="130" y="132" text-anchor="middle" fill="#2dff6b" font-size="11.5" font-weight="700" letter-spacing="1">FRONTEND</text>
+    <text x="130" y="150" text-anchor="middle" fill="#4a8a64" font-size="9.5">React 19 + Leaflet</text>
+    <text x="130" y="166" text-anchor="middle" fill="#4a8a64" font-size="9.5">radar / chat / decisions</text>
+    <text x="130" y="186" text-anchor="middle" fill="#2a6a44" font-size="9">Vite · Zustand</text>
+    <circle cx="60" cy="110" r="3" fill="#2dff6b">
+      <animate attributeName="opacity" values="1;0.3;1" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Backend box -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="270" y="90" width="420" height="280" rx="10" fill="#04150c" stroke="#1d5a36" stroke-width="1.2" stroke-dasharray="5 4"/>
+    <rect x="270" y="90" width="420" height="26" rx="10" fill="#0a2a18"/>
+    <rect x="270" y="110" width="420" height="6" fill="#0a2a18"/>
+    <text x="288" y="108" fill="#2dff6b" font-size="10.5" letter-spacing="2">FASTAPI BACKEND · Python 3.12</text>
+    <circle cx="676" cy="103" r="3.5" fill="#2dff6b">
+      <animate attributeName="opacity" values="1;0.3;1" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Inside backend: SimulationService -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="290" y="140" width="170" height="70" rx="6" fill="#08240e" stroke="#33ff33" stroke-width="1"/>
+    <text x="375" y="162" text-anchor="middle" fill="#33ff33" font-size="10.5" font-weight="700">SimulationService</text>
+    <text x="375" y="178" text-anchor="middle" fill="#2a7a2a" font-size="8.5">CPA · SIGMET · 7700</text>
+    <text x="375" y="194" text-anchor="middle" fill="#2a7a2a" font-size="8.5">detection loop</text>
+    <!-- pulsing detection dot -->
+    <circle cx="375" cy="204" r="2.5" fill="#33ff33">
+      <animate attributeName="opacity" values="1;0.2;1" dur="1.2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- ml/ math box -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="290" y="226" width="170" height="56" rx="6" fill="#0e1a2e" stroke="#4488ff" stroke-width="1"/>
+    <text x="375" y="248" text-anchor="middle" fill="#4488ff" font-size="10.5" font-weight="700">ml/ (pure math)</text>
+    <text x="375" y="264" text-anchor="middle" fill="#4a6a9a" font-size="8.5">conflict · trajectory · what-if</text>
+    <text x="375" y="276" text-anchor="middle" fill="#4a6a9a" font-size="8.5">counterfactual CPA</text>
+  </g>
+
+  <!-- BandPoster -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="490" y="140" width="180" height="70" rx="6" fill="#2e1a06" stroke="#ffaa00" stroke-width="1"/>
+    <text x="580" y="162" text-anchor="middle" fill="#ffaa00" font-size="10.5" font-weight="700">BandPoster</text>
+    <text x="580" y="178" text-anchor="middle" fill="#a87a30" font-size="8.5">event-driven @mention</text>
+    <text x="580" y="194" text-anchor="middle" fill="#a87a30" font-size="8.5">dispatch to specialists</text>
+  </g>
+
+  <!-- BandClient (sim | live) -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="490" y="226" width="180" height="70" rx="6" fill="#062a2a" stroke="#33ccff" stroke-width="1.2"/>
+    <text x="580" y="248" text-anchor="middle" fill="#33ccff" font-size="10.5" font-weight="700">BandClient</text>
+    <text x="580" y="264" text-anchor="middle" fill="#2a7a8a" font-size="8.5">SimulatedBandClient</text>
+    <text x="580" y="278" text-anchor="middle" fill="#2a7a8a" font-size="8.5">  |  LiveBandClient (REST)</text>
+    <!-- toggle indicator -->
+    <rect x="510" y="284" width="140" height="6" rx="3" fill="#0a2a2a"/>
+    <rect x="510" y="284" width="68" height="6" rx="3" fill="#33ccff">
+      <animate attributeName="x" values="510;582;510" dur="4s" repeatCount="indefinite"/>
+      <animate attributeName="fill" values="#33ccff;#ffaa00;#33ccff" dur="4s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+
+  <!-- AdvisoryIngester + audit -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="290" y="300" width="370" height="56" rx="6" fill="#1a0e2e" stroke="#aa33ff" stroke-width="1"/>
+    <text x="475" y="322" text-anchor="middle" fill="#aa33ff" font-size="10.5" font-weight="700">AdvisoryIngester → AuditService (SQLite)</text>
+    <text x="475" y="338" text-anchor="middle" fill="#6a4a8a" font-size="8.5">structured events · regulator-ready incident export · decision trail</text>
+    <text x="475" y="350" text-anchor="middle" fill="#6a4a8a" font-size="8.5">thought · tool_call · tool_result · verdict</text>
+  </g>
+
+  <!-- Band room (external) -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="740" y="170" width="170" height="160" rx="10" fill="#04150c" stroke="#1d5a36" stroke-width="1.2" stroke-dasharray="5 4"/>
+    <rect x="740" y="170" width="170" height="26" rx="10" fill="#0a2a18"/>
+    <rect x="740" y="190" width="170" height="6" fill="#0a2a18"/>
+    <text x="825" y="188" text-anchor="middle" fill="#2dff6b" font-size="9.5" letter-spacing="1.5">BAND ROOM</text>
+    <text x="825" y="222" text-anchor="middle" fill="#4a8a64" font-size="9">6 remote agents</text>
+    <!-- mini agent dots -->
+    <g>
+      <circle cx="780" cy="246" r="5" fill="#4488ff"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" repeatCount="indefinite"/></circle>
+      <circle cx="805" cy="246" r="5" fill="#ffaa00"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" begin="0.2s" repeatCount="indefinite"/></circle>
+      <circle cx="830" cy="246" r="5" fill="#33ccff"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" begin="0.4s" repeatCount="indefinite"/></circle>
+      <circle cx="855" cy="246" r="5" fill="#aa33ff"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" begin="0.6s" repeatCount="indefinite"/></circle>
+      <circle cx="793" cy="270" r="5" fill="#33ff33"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" begin="0.8s" repeatCount="indefinite"/></circle>
+      <circle cx="818" cy="270" r="5" fill="#ff3333"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" begin="1.0s" repeatCount="indefinite"/></circle>
+    </g>
+    <text x="825" y="300" text-anchor="middle" fill="#2a6a44" font-size="8.5">LangGraph + Pydantic AI</text>
+    <text x="825" y="313" text-anchor="middle" fill="#2a6a44" font-size="8.5">+ CrewAI · one room</text>
+  </g>
+
+  <!-- Decision gate -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="40" y="320" width="180" height="80" rx="8" fill="#0a1a12" stroke="#7aff9e" stroke-width="1.4"/>
+    <text x="130" y="344" text-anchor="middle" fill="#7aff9e" font-size="11" font-weight="700">CONTROLLER GATE</text>
+    <text x="130" y="362" text-anchor="middle" fill="#4a8a64" font-size="9">APPROVE / REJECT / MODIFY</text>
+    <text x="130" y="378" text-anchor="middle" fill="#2a6a44" font-size="8.5">nothing executes without a click</text>
+    <text x="130" y="392" text-anchor="middle" fill="#2a6a44" font-size="8.5">human-on-the-loop</text>
+  </g>
+
+  <!-- Connections with animated packets -->
+  <g fill="none" stroke="#2a6a44" stroke-width="1.2">
+    <path d="M 220 170 C 245 170, 255 175, 290 175" marker-end="url(#archArrow)"/>
+    <path d="M 220 200 C 245 200, 255 320, 290 322" marker-end="url(#archArrow)"/>
+    <path d="M 460 175 L 490 175" marker-end="url(#archArrow)"/>
+    <path d="M 580 210 L 580 226" marker-end="url(#archArrow)"/>
+    <path d="M 670 261 L 740 250" marker-end="url(#archArrow)"/>
+    <path d="M 670 328 C 690 328, 700 360, 220 360" marker-end="url(#archArrow)"/>
+    <path d="M 580 300 L 580 296" marker-end="url(#archArrow)"/>
+  </g>
+
+  <!-- animated data packet on the main WS path -->
+  <circle r="4" fill="#39ff7a">
+    <animateMotion dur="3.5s" repeatCount="indefinite" path="M 220 170 L 290 175"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="3.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle r="4" fill="#ffaa00">
+    <animateMotion dur="3.5s" repeatCount="indefinite" path="M 580 210 L 580 226"/>
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.3;0.4;0.6;0.65" dur="3.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle r="4" fill="#33ccff">
+    <animateMotion dur="3.5s" repeatCount="indefinite" path="M 670 261 L 740 250"/>
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.65;0.7;0.95;1" dur="3.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- annotations -->
+  <g font-family="'SF Mono',monospace" font-size="8.5" fill="#3a7a54">
+    <text x="226" y="166">WebSocket</text>
+    <text x="496" y="160">snapshot</text>
+    <text x="586" y="222">dispatch</text>
+    <text x="676" y="256">BAND_MODE</text>
+    <text x="500" y="412">advisory → audit + decision trail</text>
+  </g>
+
+  <!-- prize footer -->
+  <g font-family="'SF Mono',monospace">
+    <rect x="40" y="448" width="860" height="42" rx="8" fill="#06140d" stroke="#123a23"/>
+    <text x="60" y="466" fill="#2dff6b" font-size="10" font-weight="700" letter-spacing="1.5">JUDGING-MAPPED</text>
+    <text x="60" y="482" fill="#4a8a64" font-size="9.5">Application of Technology: Band is the collaboration layer, not a wrapper  ·  Originality: adversarial review + human gate + what-if counterfactual  ·  Presentation: live radar + agent chat  ·  Business Value: regulated ATC workflow</text>
+  </g>
+</svg>
