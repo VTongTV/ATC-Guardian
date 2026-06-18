@@ -322,7 +322,3 @@ docs/diagrams/         # animated SVGs used in this README
 - **Cross-domain templates** — extract the detect → review → gate pattern into a reusable scaffold for healthcare, finance, and legal workflows.
 
 ---
-
-## License
-
-MIT
