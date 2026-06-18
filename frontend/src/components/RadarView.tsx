@@ -19,6 +19,7 @@ import {
   Tooltip,
   useMap,
 } from "react-leaflet";
+import { SystemIcon } from "./AgentIcons";
 import "leaflet/dist/leaflet.css";
 import { useAtcStore } from "../stores/atcStore";
 import type { AircraftState, ConflictAdvisory, WeatherAdvisory } from "../lib/types";
@@ -672,7 +673,10 @@ function WeatherHazardOverlay({
                 fontSize: "11px",
                 color: hazardColor,
               }}>
-                ⚠ Weather Hazard ({advisory.severity})
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", verticalAlign: "middle" }}>
+                  <SystemIcon type="warning" size={12} color={hazardColor} />
+                  Weather Hazard ({advisory.severity})
+                </span>
                 <br />
                 <span style={{ color: "#aaa" }}>
                   Affected: {advisory.affected_callsigns.join(", ")}

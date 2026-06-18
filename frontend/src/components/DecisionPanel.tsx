@@ -7,6 +7,7 @@ controller acts here. This is the 'AI-assisted, human-decided' layer.
 
 import { useCallback, useEffect, useState } from "react";
 import type { ControllerDecision, ResolveDecisionRequest } from "../lib/types";
+import { SystemIcon } from "./AgentIcons";
 
 /** HTTP base URL. In dev, Vite proxies to the backend. */
 const HTTP_BASE_URL: string = import.meta.env.VITE_API_URL ?? "";
@@ -136,7 +137,9 @@ export function DecisionPanel(): React.ReactElement {
       }}>
         {pending.length === 0 && (
           <div className="atc-empty-state">
-            <div className="atc-empty-state-icon">✓</div>
+            <div className="atc-empty-state-icon">
+              <SystemIcon type="check" size={28} color="var(--accent-green)" />
+            </div>
             <div className="atc-empty-state-title">
               {recent
                 ? `Last action: ${recent.action} (${recent.id.slice(-6)})`
