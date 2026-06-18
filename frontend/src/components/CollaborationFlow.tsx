@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAtcStore } from "../stores/atcStore";
+import { AgentIcon, AGENT_COLORS } from "./AgentIcons";
 
 /** Agent node metadata from GET /collaboration/graph. */
 interface AgentNode {
@@ -38,17 +39,6 @@ const FRAMEWORK_COLORS: Record<string, string> = {
   "LangGraph": "#ff6b35",
   "Pydantic AI": "#9b59b6",
   "CrewAI": "#1abc9c",
-};
-
-/** Role icon per agent handle. */
-const AGENT_ICONS: Record<string, string> = {
-  coordinator: '🎯',
-  'conflict-detector': '⚠️',
-  'weather-analyst': '🌩️',
-  'ground-ops': '✈️',
-  'emergency-response': '🚨',
-  'safety-reviewer': '🛡️',
-  'system-ingest': '📡',
 };
 
 /** Convert a hex colour to rgba with the given alpha. */
@@ -214,7 +204,7 @@ export function CollaborationFlow(): React.ReactElement {
               }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.7rem' }}>
-                  {AGENT_ICONS[node.name] ?? '🤖'}
+                  <AgentIcon handle={node.name} size={14} color={node.colour} />
                 </span>
                 <span style={{ color: node.colour, fontWeight: 'bold' }}>
                   {node.label}

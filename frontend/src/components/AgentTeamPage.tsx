@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAtcStore } from "../stores/atcStore";
+import { AgentIcon, AGENT_COLORS } from "./AgentIcons";
 
 interface AgentNode {
   name: string;
@@ -35,16 +36,6 @@ const FRAMEWORK_COLORS: Record<string, string> = {
   "CrewAI": "#1abc9c",
 };
 
-const AGENT_ICONS: Record<string, string> = {
-  coordinator: "🎯",
-  "conflict-detector": "⚠️",
-  "weather-analyst": "🌩️",
-  "ground-ops": "✈️",
-  "emergency-response": "🚨",
-  "safety-reviewer": "🛡️",
-  "system-ingest": "📡",
-};
-
 function withAlpha(hex: string, alpha: number): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);
   if (!m) return hex;
@@ -71,7 +62,7 @@ function injectFlashKeyframes(): void {
   document.head.appendChild(sheet);
 }
 
-export function AgentTeamPage(): React.ReactElement {
+export function AgentTeamPage({ onAgentClick }: { onAgentClick?: () => void }): React.ReactElement {
   const [graph, setGraph] = useState<CollaborationGraph | null>(null);
   const [flash, setFlash] = useState<{ agent: string; tick: number } | null>(null);
   const lastReplyAgent = useAtcStore((s) => s.lastReplyAgent);
@@ -174,14 +165,18 @@ export function AgentTeamPage(): React.ReactElement {
           const activity = incomingWeight[node.name] ?? 0;
           const isActive = activity > 0;
           const isFlashing = flash?.agent === node.name;
-          const icon = AGENT_ICONS[node.name] ?? "🤖";
 
           return (
             <div
               key={`${node.name}-${isFlashing ? flash!.tick : ""}`}
               title={node.framework_note}
               className={`atc-agent-card-extended ${isFlashing ? "agent-flash" : ""}`}
+              onClick={() => {
+                useAtcStore.getState().setSelectedAgentHandle(node.name);
+                onAgentClick?.();
+              }}
               style={{
+                cursor: "pointer",
                 border: `1px solid ${isActive ? node.colour : "var(--border-mid)"}`,
                 borderLeft: `4px solid ${node.colour}`,
                 backgroundColor: isActive ? "var(--bg-surface)" : "var(--bg-mid)",
@@ -210,7 +205,7 @@ export function AgentTeamPage(): React.ReactElement {
                   flexShrink: 0,
                   transition: "background-color var(--transition-fast), border-color var(--transition-fast)",
                 }}>
-                  {icon}
+                  <AgentIcon handle={node.name} size={22} color={node.colour} />
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{

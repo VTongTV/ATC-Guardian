@@ -13,6 +13,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { AuditEvent } from "../lib/types";
 import { useAtcStore } from "../stores/atcStore";
+import { AgentIcon, AGENT_COLORS as SHARED_AGENT_COLORS, SystemIcon } from "./AgentIcons";
 
 // ─── Agent Color & Identity Maps ────────────────────────────────────
 
@@ -36,16 +37,6 @@ const AGENT_LABELS: Record<string, string> = {
   "system-ingest": "System",
 };
 
-const AGENT_ICONS: Record<string, string> = {
-  coordinator: "🎯",
-  "conflict-detector": "⚠️",
-  "weather-analyst": "🌩️",
-  "ground-ops": "✈️",
-  "emergency-response": "🚨",
-  "safety-reviewer": "🛡️",
-  "system-ingest": "📡",
-};
-
 const AGENT_SHORT: Record<string, string> = {
   coordinator: "COORD",
   "conflict-detector": "CNFLT",
@@ -67,10 +58,6 @@ function agentColor(name: string): string {
 
 function agentLabel(name: string): string {
   return AGENT_LABELS[normalizeAgentHandle(name)] ?? name;
-}
-
-function agentIcon(name: string): string {
-  return AGENT_ICONS[normalizeAgentHandle(name)] ?? "🤖";
 }
 
 function agentShort(name: string): string {
@@ -384,7 +371,7 @@ function renderMentionChips(
             transition: "background-color var(--transition-fast)",
           }}
         >
-          <span style={{ fontSize: "0.55rem" }}>{agentIcon(handle)}</span>
+          <AgentIcon handle={handle} size={10} color={AGENT_COLORS[handle] ?? "#fff"} />
           {label}
         </span>,
       );
@@ -679,7 +666,7 @@ export function AgentChatPanel(): React.ReactElement {
                 aria-pressed={isActive}
                 aria-label={`Filter by ${agentLabel(name)}`}
               >
-                <span style={{ fontSize: "10px" }}>{agentIcon(name)}</span>
+                <AgentIcon handle={name} size={12} color={agentColor(name)} />
                 {agentShort(name)}
               </button>
             );
@@ -761,7 +748,7 @@ export function AgentChatPanel(): React.ReactElement {
                   flexShrink: 0,
                   transition: "background-color var(--transition-fast)",
                 }}>
-                  {agentIcon(fromHandle)}
+                  <AgentIcon handle={fromHandle} size={14} color={fromColor} />
                 </span>
                 {/* Sender name */}
                 <span style={{
