@@ -277,39 +277,113 @@ html, body, #root {
   box-shadow: var(--shadow-glow-sm);
 }
 
-/* ─── Agent Detail Page ──────────────────────────────────────────── */
+/* ─── Agent Detail Page (bento grid) ──────────────────────────────── */
 .agent-detail-page {
   display: flex;
   flex-direction: column;
   padding: var(--sp-6);
-  gap: var(--sp-6);
+  gap: var(--sp-5);
   overflow-y: auto;
   flex: 1;
 }
-.agent-detail-hero {
+.agent-detail-back {
   display: flex;
   align-items: center;
-  gap: var(--sp-5);
-}
-.agent-detail-icon-wrap {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-xl);
-  border: 2px solid var(--border-bright);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-3);
   background-color: var(--bg-surface);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  color: var(--color-nominal);
+  font-size: var(--fs-meta);
+  font-family: var(--font-mono);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  box-shadow: var(--shadow-sm);
+  align-self: flex-start;
 }
-.agent-detail-section {
+.agent-detail-back:hover {
+  border-color: var(--border-bright);
+  background-color: var(--bg-raised);
+}
+
+/* Bento grid */
+.agent-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+.agent-bento > * {
   border: 1px solid var(--border-mid);
   border-radius: var(--radius-lg);
   padding: var(--sp-4);
   background-color: var(--bg-surface);
   box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease;
 }
-.agent-detail-section-title {
+.agent-bento > *:hover {
+  border-color: var(--agent-color, var(--border-bright));
+}
+
+/* Hero cell — spans 2 cols */
+.agent-bento-hero {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-5);
+}
+.agent-bento-hero-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-shrink: 0;
+}
+.agent-bento-hero-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-xl);
+  border: 2px solid var(--border-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-mid);
+}
+.agent-bento-hero-title {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.08em;
+}
+.agent-bento-hero-label {
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+.agent-bento-hero-framework {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.agent-bento-hero-svg {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 140px;
+  max-height: 200px;
+  overflow: hidden;
+}
+.agent-bento-hero-svg img {
+  height: 100%;
+  max-height: 200px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.85;
+}
+
+/* Cell titles */
+.agent-bento-cell-title {
   font-size: var(--fs-title);
   font-weight: 600;
   color: var(--color-nominal);
@@ -318,15 +392,98 @@ html, body, #root {
   margin-bottom: var(--sp-3);
   animation: glow-phosphor 4s ease-in-out infinite;
 }
-.agent-detail-stat {
+
+/* Model info cell */
+.agent-bento-model {
+  display: flex;
+  flex-direction: column;
+}
+.agent-bento-model-id {
+  font-size: var(--fs-meta);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
+  background-color: var(--bg-mid);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-dim);
+  word-break: break-all;
+}
+.agent-bento-model-props {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.agent-bento-model-prop {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-meta);
+}
+.agent-bento-model-prop-key {
+  color: var(--text-dim);
+}
+.agent-bento-model-prop-val {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+/* Role cell */
+.agent-bento-role {
+  display: flex;
+  flex-direction: column;
+}
+.agent-bento-role-text {
+  font-size: var(--fs-meta);
+  color: var(--text-body);
+  line-height: 1.6;
+}
+
+/* List cells (capabilities, communications) */
+.agent-bento-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.agent-bento-list li {
+  position: relative;
+  padding-left: 1.2rem;
+  margin-bottom: 0.3rem;
+  font-size: var(--fs-meta);
+  color: var(--text-body);
+}
+
+/* Stats cell */
+.agent-bento-stat {
   display: flex;
   justify-content: space-between;
   padding: var(--sp-1) 0;
   border-bottom: 1px solid var(--border-dim);
   font-size: var(--fs-meta);
 }
-.agent-detail-stat:last-child {
+.agent-bento-stat:last-child {
   border-bottom: none;
+}
+.agent-bento-stat-key {
+  color: var(--text-dim);
+}
+.agent-bento-stat-val {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+/* Responsive: single column on narrow screens */
+@media (max-width: 700px) {
+  .agent-bento {
+    grid-template-columns: 1fr;
+  }
+  .agent-bento-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .agent-bento-hero-svg {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* ─── Utility Classes ────────────────────────────────────────────── */

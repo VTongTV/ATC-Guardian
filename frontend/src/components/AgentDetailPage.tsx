@@ -1,15 +1,32 @@
-/** ATC Guardian — agent detail page.
+/** ATC Guardian — agent detail page (bento grid redesign).
  *
- * Full-page view showing a selected agent's role, capabilities,
- * communication patterns, and live statistics.
- * Navigated to via the flash bar or agent team cards.
+ * Full-page view with animated SVG illustration, model info,
+ * capabilities, communications, and live statistics in a bento layout.
  */
 
 import React, { useEffect, useState } from "react";
 import { useAtcStore } from "../stores/atcStore";
 import { AgentIcon, AGENT_COLORS } from "./AgentIcons";
 
-// ─── Static agent data ──────────────────────────────────────────
+// ─── SVG imports ──────────────────────────────────────────────────
+
+import coordinatorSvg from "../assets/agents/coordinator.svg";
+import conflictDetectorSvg from "../assets/agents/conflict-detector.svg";
+import weatherAnalystSvg from "../assets/agents/weather-analyst.svg";
+import groundOpsSvg from "../assets/agents/ground-ops.svg";
+import emergencyResponseSvg from "../assets/agents/emergency-response.svg";
+import safetyReviewerSvg from "../assets/agents/safety-reviewer.svg";
+
+const AGENT_SVGS: Record<string, string> = {
+  coordinator: coordinatorSvg,
+  "conflict-detector": conflictDetectorSvg,
+  "weather-analyst": weatherAnalystSvg,
+  "ground-ops": groundOpsSvg,
+  "emergency-response": emergencyResponseSvg,
+  "safety-reviewer": safetyReviewerSvg,
+};
+
+// ─── Agent detail data ─────────────────────────────────────────────
 
 const AGENT_DETAILS: Record<string, {
   role: string;
@@ -105,7 +122,53 @@ const AGENT_DETAILS: Record<string, {
   },
 };
 
-// ─── Collaboration graph node shape ────────────────────────────
+// ─── Model info ────────────────────────────────────────────────────
+
+const AGENT_MODELS: Record<string, {
+  primary: string;
+  provider: string;
+  reasoning: string;
+  maxTokens: string;
+}> = {
+  coordinator: {
+    primary: "deepseek/deepseek-v4-pro",
+    provider: "AI/ML API",
+    reasoning: "low",
+    maxTokens: "1024",
+  },
+  "conflict-detector": {
+    primary: "deepseek/deepseek-v4-pro",
+    provider: "AI/ML API",
+    reasoning: "low",
+    maxTokens: "1024",
+  },
+  "weather-analyst": {
+    primary: "deepseek/deepseek-v4-pro",
+    provider: "AI/ML API",
+    reasoning: "low",
+    maxTokens: "1024",
+  },
+  "ground-ops": {
+    primary: "deepseek/deepseek-v4-pro",
+    provider: "AI/ML API",
+    reasoning: "low",
+    maxTokens: "512",
+  },
+  "emergency-response": {
+    primary: "deepseek/deepseek-v4-pro",
+    provider: "AI/ML API",
+    reasoning: "low",
+    maxTokens: "1024",
+  },
+  "safety-reviewer": {
+    primary: "deepseek/deepseek-v4-pro",
+    provider: "AI/ML API",
+    reasoning: "low",
+    maxTokens: "1024",
+  },
+};
+
+// ─── Collaboration graph node shape ────────────────────────────────
 
 interface AgentNode {
   name: string;
@@ -120,7 +183,7 @@ interface CollaborationGraph {
   nodes: AgentNode[];
 }
 
-// ─── Component ─────────────────────────────────────────────────
+// ─── Component ─────────────────────────────────────────────────────
 
 interface AgentDetailPageProps {
   onBack: () => void;
@@ -131,6 +194,8 @@ export function AgentDetailPage({ onBack }: AgentDetailPageProps): React.ReactEl
   const handle = selectedHandle ?? "coordinator";
   const color = AGENT_COLORS[handle] ?? "#888";
   const details = AGENT_DETAILS[handle];
+  const model = AGENT_MODELS[handle];
+  const svgSrc = AGENT_SVGS[handle];
 
   // Live stats from collaboration graph
   const [node, setNode] = useState<AgentNode | null>(null);
@@ -165,122 +230,114 @@ export function AgentDetailPage({ onBack }: AgentDetailPageProps): React.ReactEl
   return (
     <div className="agent-detail-page">
       {/* Back button */}
-      <button
-        onClick={onBack}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--sp-1)",
-          padding: "var(--sp-1) var(--sp-3)",
-          backgroundColor: "var(--bg-surface)",
-          border: "1px solid var(--border-mid)",
-          borderRadius: "var(--radius-md)",
-          color: "var(--color-nominal)",
-          fontSize: "var(--fs-meta)",
-          fontFamily: "var(--font-mono)",
-          cursor: "pointer",
-          letterSpacing: "0.04em",
-          boxShadow: "var(--shadow-sm)",
-          alignSelf: "flex-start",
-        }}
-      >
+      <button className="agent-detail-back" onClick={onBack}>
         <span style={{ fontSize: "0.7rem" }}>←</span>
         BACK
       </button>
 
-      {/* Hero */}
-      <div className="agent-detail-hero">
-        <div className="agent-detail-icon-wrap">
-          <AgentIcon handle={handle} size={36} color={color} />
-        </div>
-        <div>
-          <h2 style={{ fontSize: "var(--fs-title)", fontWeight: 700, color, margin: 0, letterSpacing: "0.08em" }}>
-            {shortLabel}
-          </h2>
-          <div style={{ fontSize: "var(--fs-body)", color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
-            {node?.label ?? handle}
-          </div>
-          {node?.framework && (
-            <div style={{ fontSize: "var(--fs-micro)", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-              {node.framework} {node.framework_note ? `— ${node.framework_note}` : ""}
+      {/* Bento grid */}
+      <div className="agent-bento">
+        {/* ── Cell 1: Hero + SVG illustration (spans 2 cols) ── */}
+        <div className="agent-bento-hero" style={{ "--agent-color": color } as React.CSSProperties}>
+          <div className="agent-bento-hero-info">
+            <div className="agent-bento-hero-icon">
+              <AgentIcon handle={handle} size={28} color={color} />
             </div>
-          )}
+            <div>
+              <h2 className="agent-bento-hero-title" style={{ color }}>
+                {shortLabel}
+              </h2>
+              <div className="agent-bento-hero-label">
+                {node?.label ?? handle}
+              </div>
+              {node?.framework && (
+                <div className="agent-bento-hero-framework">
+                  {node.framework}{node.framework_note ? ` — ${node.framework_note}` : ""}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="agent-bento-hero-svg">
+            {svgSrc && <img src={svgSrc} alt={`${handle} illustration`} />}
+          </div>
         </div>
-      </div>
 
-      {/* Role */}
-      {details && (
-        <div className="agent-detail-section">
-          <div className="agent-detail-section-title">Role</div>
-          <div className="atc-body">{details.role}</div>
-        </div>
-      )}
+        {/* ── Cell 2: Model Info ── */}
+        {model && (
+          <div className="agent-bento-model" style={{ "--agent-color": color } as React.CSSProperties}>
+            <div className="agent-bento-cell-title">Model</div>
+            <div className="agent-bento-model-id">{model.primary}</div>
+            <div className="agent-bento-model-props">
+              <div className="agent-bento-model-prop">
+                <span className="agent-bento-model-prop-key">Provider</span>
+                <span className="agent-bento-model-prop-val">{model.provider}</span>
+              </div>
+              <div className="agent-bento-model-prop">
+                <span className="agent-bento-model-prop-key">Reasoning</span>
+                <span className="agent-bento-model-prop-val">{model.reasoning}</span>
+              </div>
+              <div className="agent-bento-model-prop">
+                <span className="agent-bento-model-prop-key">Max Tokens</span>
+                <span className="agent-bento-model-prop-val">{model.maxTokens}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* Capabilities */}
-      {details && (
-        <div className="agent-detail-section">
-          <div className="agent-detail-section-title">Capabilities</div>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {details.capabilities.map((cap, i) => (
-              <li
-                key={i}
-                style={{
-                  position: "relative",
-                  paddingLeft: "1.2rem",
-                  marginBottom: "0.3rem",
-                  fontSize: "var(--fs-meta)",
-                  color: "var(--text-body)",
-                }}
-              >
-                <span style={{ position: "absolute", left: 0, color, fontWeight: 700 }}>▸</span>
-                {cap}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {/* ── Cell 3: Role ── */}
+        {details && (
+          <div className="agent-bento-role" style={{ "--agent-color": color } as React.CSSProperties}>
+            <div className="agent-bento-cell-title">Role</div>
+            <div className="agent-bento-role-text">{details.role}</div>
+          </div>
+        )}
 
-      {/* Communications */}
-      {details && (
-        <div className="agent-detail-section">
-          <div className="agent-detail-section-title">Communications</div>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {details.communications.map((comm, i) => (
-              <li
-                key={i}
-                style={{
-                  position: "relative",
-                  paddingLeft: "1.2rem",
-                  marginBottom: "0.3rem",
-                  fontSize: "var(--fs-meta)",
-                  color: "var(--text-body)",
-                }}
-              >
-                <span style={{ position: "absolute", left: 0, color: "var(--color-info)", fontWeight: 700 }}>▸</span>
-                {comm}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {/* ── Cell 4: Capabilities ── */}
+        {details && (
+          <div className="agent-bento-caps" style={{ "--agent-color": color } as React.CSSProperties}>
+            <div className="agent-bento-cell-title">Capabilities</div>
+            <ul className="agent-bento-list">
+              {details.capabilities.map((cap, i) => (
+                <li key={i}>
+                  <span style={{ color, fontWeight: 700 }}>▸</span> {cap}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-      {/* Live Stats */}
-      <div className="agent-detail-section">
-        <div className="agent-detail-section-title">Live Stats</div>
-        <div className="agent-detail-stat">
-          <span style={{ color: "var(--text-dim)" }}>Recent messages</span>
-          <span style={{ color, fontWeight: 600 }}>{msgCount}</span>
-        </div>
-        <div className="agent-detail-stat">
-          <span style={{ color: "var(--text-dim)" }}>Framework</span>
-          <span style={{ color: "var(--text-secondary)" }}>{node?.framework ?? "—"}</span>
-        </div>
-        <div className="agent-detail-stat">
-          <span style={{ color: "var(--text-dim)" }}>Agent color</span>
-          <span style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
-            <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: color, display: "inline-block" }} />
-            <span style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)", fontSize: "var(--fs-micro)" }}>{color}</span>
-          </span>
+        {/* ── Cell 5: Communications ── */}
+        {details && (
+          <div className="agent-bento-comms" style={{ "--agent-color": color } as React.CSSProperties}>
+            <div className="agent-bento-cell-title">Communications</div>
+            <ul className="agent-bento-list">
+              {details.communications.map((comm, i) => (
+                <li key={i}>
+                  <span style={{ color: "var(--color-info)", fontWeight: 700 }}>▸</span> {comm}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ── Cell 6: Live Stats ── */}
+        <div className="agent-bento-stats" style={{ "--agent-color": color } as React.CSSProperties}>
+          <div className="agent-bento-cell-title">Live Stats</div>
+          <div className="agent-bento-stat">
+            <span className="agent-bento-stat-key">Recent messages</span>
+            <span className="agent-bento-stat-val" style={{ color }}>{msgCount}</span>
+          </div>
+          <div className="agent-bento-stat">
+            <span className="agent-bento-stat-key">Framework</span>
+            <span className="agent-bento-stat-val">{node?.framework ?? "—"}</span>
+          </div>
+          <div className="agent-bento-stat">
+            <span className="agent-bento-stat-key">Agent color</span>
+            <span className="agent-bento-stat-val" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: color, display: "inline-block" }} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-micro)" }}>{color}</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>
