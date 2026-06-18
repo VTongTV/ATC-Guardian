@@ -6,6 +6,18 @@ runs them all as background ``asyncio.Task`` objects inside the backend
 process.  This eliminates the need for separate subprocesses on Render
 where launching 7+ OS processes from a single web service is fragile.
 
+**Connection lifecycle (the primary token-burn gate):**
+Agents are NOT connected at backend startup.  They are launched lazily
+by ``main.py`` the first time ``/demo/start`` is hit (via
+``launch_agents()``), and fully disconnected on ``/demo/stop`` (via
+``shutdown_agents_async()``).  Disconnecting cancels the agent tasks,
+which triggers ``agent.run()``'s ``finally`` → ``agent.stop()``, tearing
+down every WebSocket.  A disconnected agent reads zero messages from the
+shared Band room and consumes zero tokens.  This is the fix for a
+runaway token-burn bug where all 6 agents connected at backend startup,
+replayed the room's message backlog, and @mention-cascaded each other
+(~1–2M tokens/min before any demo was started).
+
 Design
 ------
 The 6 agents share a single event loop.  Three agents (conflict_detector,
@@ -27,16 +39,16 @@ wrong ``prompts.py`` first.  To avoid this, each agent's directory is
 added to ``sys.path`` **only during its own adapter import**, then
 removed immediately after so the next agent gets a clean path.
 
-Demo-active guard & rate limiting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Agents are wrapped so they only process Band messages when the demo is
-active.  Each agent is also rate-limited to 3 LLM calls per rolling
-60-second window to prevent cascading @mention loops from burning tokens.
-
-When the demo stops, ``set_demo_active(False)`` is called and 2 STOP
-directive messages are posted to the Band room per agent (6 agents × 2
-= 12 messages).  These STOP directives tell each agent's LLM to cease
-all processing, thinking, and responding immediately.
+Demo-active guard & rate limiting (defense-in-depth)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Even while connected, agents are wrapped so they only process Band
+messages when the demo is active.  Each agent is also rate-limited to 3
+LLM calls per rolling 60-second window to prevent cascading @mention
+loops from burning tokens.  These are secondary guards — the primary
+gate is the connection lifecycle (no connected agent = no messages at
+all).  STOP directive messages are no longer posted on demo stop
+(post_stop_directives is kept for potential manual use but not called
+by the demo lifecycle).
 """
 
 from __future__ import annotations
@@ -391,8 +403,34 @@ async def launch_agents() -> tuple[list[asyncio.Task], list[str]]:
 
 
 def shutdown_agents(tasks: list[asyncio.Task]) -> None:
-    """Cancel all agent tasks gracefully."""
+    """Cancel all agent tasks gracefully (synchronous)."""
     for task in tasks:
         if not task.done():
             task.cancel()
     logger.info("Cancelled %d agent tasks", len(tasks))
+
+
+async def shutdown_agents_async(tasks: list[asyncio.Task]) -> None:
+    """Cancel all agent tasks and wait for them to finish.
+
+    Cancelling the tasks causes ``agent.run()``'s ``finally`` block to
+    call ``agent.stop()``, which tears down every execution context and
+    closes the WebSocket.  We await each task so the SDK cleanup runs
+    to completion before we return — guarantees zero lingering connections.
+
+    Args:
+        tasks: List of asyncio.Task objects returned by launch_agents().
+    """
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+    # Wait for all tasks to finish (CancelledError is expected).
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for task, result in zip(tasks, results):
+        if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+            logger.warning(
+                "Agent task %s exited with error: %s",
+                task.get_name(),
+                result,
+            )
+    logger.info("Shutdown complete for %d agent tasks", len(tasks))
