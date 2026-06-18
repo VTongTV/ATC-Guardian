@@ -245,77 +245,9 @@ function extractStructuredFields(content: string): [StructuredField[], string] {
 
 // ─── Mention Rendering ──────────────────────────────────────────────
 
-/** Collapsible message body — shows first 2 lines by default, expand on click. */
-function CollapsibleMessageBody({
-  children,
-  accent,
-}: {
-  children: ReactNode;
-  accent: string;
-}): React.ReactElement {
-  const [expanded, setExpanded] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [isLong, setIsLong] = useState(false);
-
-  useEffect(() => {
-    const el = contentRef.current;
-    if (el) {
-      // Check if content exceeds ~4 lines (line-height 1.65 × 13px ≈ 86px)
-      setIsLong(el.scrollHeight > 90);
-    }
-  }, [children]);
-
-  return (
-    <div style={{ position: "relative" }}>
-      <div
-        ref={contentRef}
-        style={{
-          maxHeight: expanded ? "none" : "4.2em",
-          overflow: expanded ? "visible" : "hidden",
-          transition: "max-height var(--transition-med)",
-        }}
-      >
-        {children}
-      </div>
-      {isLong && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          aria-label={expanded ? "Collapse message" : "Expand full message"}
-          style={{
-            display: "block",
-            width: "100%",
-            padding: "4px 0",
-            marginTop: "2px",
-            background: "none",
-            border: "none",
-            color: accent,
-            fontSize: "var(--fs-micro)",
-            fontFamily: "var(--font-mono)",
-            cursor: "pointer",
-            textAlign: "center",
-            letterSpacing: "0.04em",
-            opacity: 0.7,
-            transition: "opacity var(--transition-fast)",
-          }}
-          onMouseEnter={(e) => { (e.target as HTMLElement).style.opacity = "1"; }}
-          onMouseLeave={(e) => { (e.target as HTMLElement).style.opacity = "0.7"; }}
-        >
-          {expanded ? "▾ COLLAPSE" : "▸ SHOW FULL"}
-        </button>
-      )}
-      {!expanded && isLong && (
-        <div style={{
-          position: "absolute",
-          bottom: "18px",
-          left: 0,
-          right: 0,
-          height: "24px",
-          background: "linear-gradient(0deg, var(--bg-deep) 20%, transparent 100%)",
-          pointerEvents: "none",
-        }} />
-      )}
-    </div>
-  );
+/** Full message body — always shows the complete content without truncation. */
+function FullMessageBody({ children }: { children: ReactNode; accent: string }): React.ReactElement {
+  return <div>{children}</div>;
 }
 
 /** Render text with @mentions as colored chips. */
@@ -585,15 +517,11 @@ export function AgentChatPanel(): React.ReactElement {
     return messages.filter((m) => m.agent_name === filterAgent);
   }, [messages, filterAgent]);
 
-  // Auto-scroll to bottom only if user is already near bottom
-  const isNearBottomRef = useRef(true);
-
+  // Auto-scroll to bottom whenever messages change
   useLayoutEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    if (isNearBottomRef.current) {
-      el.scrollTop = el.scrollHeight;
-    }
+    el.scrollTop = el.scrollHeight;
   }, [filteredMessages]);
 
   // Track scroll position for jump-to-latest button
@@ -601,7 +529,6 @@ export function AgentChatPanel(): React.ReactElement {
     const el = listRef.current;
     if (!el) return;
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    isNearBottomRef.current = nearBottom;
     setShowJumpToLatest(!nearBottom);
   }, []);
 
@@ -818,8 +745,8 @@ export function AgentChatPanel(): React.ReactElement {
                 </div>
               )}
 
-              {/* Message body — Tier 3: free-text content */}
-              <CollapsibleMessageBody accent={fromColor}>
+              {/* Message body — Tier 3: free-text content (always fully expanded) */}
+              <FullMessageBody accent={fromColor}>
                 <div className="atc-msg-body" style={{
                   padding: '8px 10px 10px',
                   color: 'var(--text-body)',
@@ -842,7 +769,7 @@ export function AgentChatPanel(): React.ReactElement {
                     </span>
                   )}
                 </div>
-              </CollapsibleMessageBody>
+              </FullMessageBody>
             </div>
           );
         })}

@@ -1,6 +1,6 @@
 /** ATC Guardian — scenario selection and data-mode controls. */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtcStore } from "../stores/atcStore";
 
 /** Available scenario definitions. */
@@ -71,6 +71,205 @@ const DEMO_NARRATION: Record<string, Record<number, string>> = {
   },
 };
 
+/** Custom styled dropdown for scenario selection. */
+function ScenarioDropdown({
+  scenarios,
+  value,
+  disabled,
+  onChange,
+}: {
+  scenarios: typeof SCENARIOS;
+  value: string;
+  disabled: boolean;
+  onChange: (id: string) => Promise<void>;
+}): React.ReactElement {
+  const [open, setOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const active = scenarios.find((s) => s.id === value);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open]);
+
+  const handleSelect = useCallback(
+    async (id: string) => {
+      if (id === value || switching) return;
+      setSwitching(true);
+      setOpen(false);
+      try {
+        await onChange(id);
+      } finally {
+        setSwitching(false);
+      }
+    },
+    [value, switching, onChange],
+  );
+
+  return (
+    <div ref={containerRef} style={{ position: "relative" }}>
+      {/* Trigger button */}
+      <button
+        type="button"
+        disabled={disabled || switching}
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          backgroundColor: "var(--bg-surface)",
+          color: "var(--color-nominal)",
+          border: "1px solid var(--border-bright)",
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--fs-body)",
+          borderRadius: "var(--radius-lg)",
+          padding: "0.45rem 0.6rem",
+          cursor: disabled || switching ? "not-allowed" : "pointer",
+          outline: "none",
+          boxShadow: "var(--shadow-sm)",
+          opacity: switching ? 0.6 : 1,
+          transition: "border-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast)",
+          textAlign: "left",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = "var(--color-nominal)";
+          e.currentTarget.style.boxShadow = "0 0 0 2px rgba(51, 255, 51, 0.12), var(--shadow-sm)";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = "var(--border-bright)";
+          e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+        }}
+        onMouseEnter={(e) => {
+          if (!disabled && !switching) {
+            e.currentTarget.style.borderColor = "var(--color-nominal)";
+            e.currentTarget.style.boxShadow = "0 0 0 2px rgba(51, 255, 51, 0.12), var(--shadow-sm)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!open) {
+            e.currentTarget.style.borderColor = "var(--border-bright)";
+            e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+          }
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {active ? `${active.id} — ${active.label}` : "Select scenario"}
+        </span>
+        <span style={{
+          marginLeft: "0.5rem",
+          fontSize: "0.55rem",
+          color: "var(--color-nominal)",
+          transition: "transform var(--transition-fast)",
+          transform: open ? "rotate(180deg)" : "rotate(0deg)",
+          flexShrink: 0,
+        }}>
+          ▼
+        </span>
+      </button>
+
+      {/* Dropdown list */}
+      {open && (
+        <ul
+          ref={listRef}
+          role="listbox"
+          aria-activedescendant={value}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            listStyle: "none",
+            margin: 0,
+            padding: "4px",
+            backgroundColor: "var(--bg-surface)",
+            border: "1px solid var(--border-bright)",
+            borderRadius: "var(--radius-lg)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5), 0 0 12px rgba(51,255,51,0.06)",
+            maxHeight: "280px",
+            overflowY: "auto",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          {scenarios.map((sc) => {
+            const isActive = sc.id === value;
+            return (
+              <li
+                key={sc.id}
+                role="option"
+                aria-selected={isActive}
+                onClick={() => handleSelect(sc.id)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                  padding: "8px 10px",
+                  borderRadius: "var(--radius-md)",
+                  cursor: "pointer",
+                  backgroundColor: isActive ? "rgba(51, 255, 51, 0.12)" : "transparent",
+                  border: `1px solid ${isActive ? "rgba(51, 255, 51, 0.35)" : "1px solid transparent"}`,
+                  transition: "background-color var(--transition-fast), border-color var(--transition-fast)",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "rgba(51, 255, 51, 0.06)";
+                    e.currentTarget.style.borderColor = "rgba(51, 255, 51, 0.15)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.borderColor = "transparent";
+                  }
+                }}
+              >
+                <span style={{
+                  color: isActive ? "var(--color-nominal)" : "var(--text-primary)",
+                  fontWeight: isActive ? 700 : 500,
+                  fontSize: "var(--fs-body)",
+                  letterSpacing: "0.01em",
+                }}>
+                  {sc.id} — {sc.label}
+                </span>
+                <span style={{
+                  color: "var(--text-dim)",
+                  fontSize: "var(--fs-micro)",
+                  lineHeight: 1.4,
+                }}>
+                  {sc.description}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Seconds to dwell on each scenario during the guided demo. */
 const DEMO_SCENARIO_SECONDS = 24;
 
@@ -135,8 +334,7 @@ export function ScenarioControls(): React.ReactElement {
   }, [demoPlaying, clearDemoTimers, setActiveScenario]);
 
   const handleScenarioChange = useCallback(
-    async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const newId = e.target.value;
+    async (newId: string) => {
       setSwitching(true);
       try {
         // Start simulation loops if not already running
@@ -172,49 +370,12 @@ export function ScenarioControls(): React.ReactElement {
       </div>
 
       {/* Scenario dropdown */}
-      <div style={{ position: "relative" }}>
-        <select
-          aria-label="Select active scenario"
-          style={{
-            backgroundColor: "var(--bg-surface)",
-            color: "var(--color-nominal)",
-            border: "1px solid var(--border-bright)",
-            fontFamily: "var(--font-mono)",
-            fontSize: "var(--fs-body)",
-            borderRadius: "var(--radius-lg)",
-            padding: "0.45rem 0.6rem",
-            width: "100%",
-            outline: "none",
-            cursor: "pointer",
-            appearance: "none" as const,
-            WebkitAppearance: "none" as const,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2333ff33'/%3E%3C/svg%3E")`,
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "right 0.5rem center",
-            backgroundSize: "10px 6px",
-            paddingRight: "1.6rem",
-            transition: "border-color var(--transition-fast), box-shadow var(--transition-fast)",
-            boxShadow: "var(--shadow-sm)",
-          }}
-          value={activeScenarioId}
-          onChange={handleScenarioChange}
-          disabled={switching}
-          onFocus={(e) => {
-            e.target.style.borderColor = "var(--color-nominal)";
-            e.target.style.boxShadow = "0 0 0 2px rgba(51, 255, 51, 0.12), var(--shadow-sm)";
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = "var(--border-bright)";
-            e.target.style.boxShadow = "var(--shadow-sm)";
-          }}
-        >
-          {SCENARIOS.map((sc) => (
-            <option key={sc.id} value={sc.id}>
-              {sc.id} — {sc.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ScenarioDropdown
+        scenarios={SCENARIOS}
+        value={activeScenarioId}
+        disabled={switching}
+        onChange={handleScenarioChange}
+      />
 
       {/* Scenario description */}
       <div style={{
