@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" fill="none">
+  <defs>
+    <radialGradient id="eg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ff3333" stop-opacity="0.12"/><stop offset="100%" stop-color="#ff3333" stop-opacity="0"/></radialGradient>
+    <filter id="ge"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <!-- Grid -->
+  <g stroke="#ff3333" stroke-width="0.3" opacity="0.06"><line x1="0" y1="40" x2="320" y2="40"/><line x1="0" y1="80" x2="320" y2="80"/><line x1="0" y1="120" x2="320" y2="120"/><line x1="0" y1="160" x2="320" y2="160"/><line x1="0" y1="200" x2="320" y2="200"/><line x1="0" y1="240" x2="320" y2="240"/><line x1="0" y1="280" x2="320" y2="280"/><line x1="40" y1="0" x2="40" y2="320"/><line x1="80" y1="0" x2="80" y2="320"/><line x1="120" y1="0" x2="120" y2="320"/><line x1="160" y1="0" x2="160" y2="320"/><line x1="200" y1="0" x2="200" y2="320"/><line x1="240" y1="0" x2="240" y2="320"/><line x1="280" y1="0" x2="280" y2="320"/></g>
+  <!-- Radial glow -->
+  <circle cx="160" cy="160" r="150" fill="url(#eg)"/>
+  <!-- Beacon dome base -->
+  <rect x="95" y="200" width="130" height="35" rx="4" fill="none" stroke="#ff3333" stroke-width="1.5" opacity="0.5"/>
+  <rect x="100" y="205" width="120" height="25" rx="2" fill="#ff3333" fill-opacity="0.02"/>
+  <!-- Dome details -->
+  <line x1="110" y1="200" x2="110" y2="235" stroke="#ff3333" stroke-width="0.5" opacity="0.2"/>
+  <line x1="130" y1="200" x2="130" y2="235" stroke="#ff3333" stroke-width="0.5" opacity="0.2"/>
+  <line x1="150" y1="200" x2="150" y2="235" stroke="#ff3333" stroke-width="0.5" opacity="0.2"/>
+  <line x1="170" y1="200" x2="170" y2="235" stroke="#ff3333" stroke-width="0.5" opacity="0.2"/>
+  <line x1="190" y1="200" x2="190" y2="235" stroke="#ff3333" stroke-width="0.5" opacity="0.2"/>
+  <line x1="210" y1="200" x2="210" y2="235" stroke="#ff3333" stroke-width="0.5" opacity="0.2"/>
+  <!-- Beacon dome -->
+  <path d="M100,200 Q100,130 160,110 Q220,130 220,200" fill="none" stroke="#ff3333" stroke-width="2" opacity="0.6">
+    <animate attributeName="opacity" values="0.6;0.35;0.6" dur="1s" repeatCount="indefinite"/>
+  </path>
+  <path d="M105,200 Q105,135 160,115 Q215,135 215,200" fill="#ff3333" fill-opacity="0.02"/>
+  <!-- Inner dome arcs -->
+  <path d="M110,195 Q110,145 160,125 Q210,145 210,195" fill="none" stroke="#ff3333" stroke-width="0.6" opacity="0.2"/>
+  <path d="M120,190 Q120,155 160,138 Q200,155 200,190" fill="none" stroke="#ff3333" stroke-width="0.5" opacity="0.15"/>
+  <!-- Rotating beacon rays -->
+  <g style="transform-origin:160px 150px" filter="url(#ge)"><animateTransform attributeName="transform" type="rotate" from="0 160 150" to="360 160 150" dur="2s" repeatCount="indefinite"/>
+    <line x1="160" y1="150" x2="160" y2="30" stroke="#ff3333" stroke-width="2" opacity="0.7"/>
+    <line x1="160" y1="150" x2="160" y2="270" stroke="#ff3333" stroke-width="1.2" opacity="0.35"/>
+    <line x1="160" y1="150" x2="280" y2="150" stroke="#ff3333" stroke-width="1.2" opacity="0.35"/>
+    <line x1="160" y1="150" x2="40" y2="150" stroke="#ff3333" stroke-width="1.2" opacity="0.35"/>
+    <!-- Diagonal rays -->
+    <line x1="160" y1="150" x2="245" y2="65" stroke="#ff3333" stroke-width="0.8" opacity="0.2"/>
+    <line x1="160" y1="150" x2="75" y2="235" stroke="#ff3333" stroke-width="0.8" opacity="0.2"/>
+    <line x1="160" y1="150" x2="245" y2="235" stroke="#ff3333" stroke-width="0.8" opacity="0.2"/>
+    <line x1="160" y1="150" x2="75" y2="65" stroke="#ff3333" stroke-width="0.8" opacity="0.2"/>
+  </g>
+  <!-- Flash pulse rings -->
+  <circle cx="160" cy="150" r="15" fill="none" stroke="#ff3333" stroke-width="2"><animate attributeName="r" from="15" to="80" dur="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite"/></circle>
+  <circle cx="160" cy="150" r="15" fill="none" stroke="#ff3333" stroke-width="1.5"><animate attributeName="r" from="15" to="80" dur="1.5s" begin="0.5s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.5" to="0" dur="1.5s" begin="0.5s" repeatCount="indefinite"/></circle>
+  <circle cx="160" cy="150" r="15" fill="none" stroke="#ff3333" stroke-width="1"><animate attributeName="r" from="15" to="80" dur="1.5s" begin="1s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.3" to="0" dur="1.5s" begin="1s" repeatCount="indefinite"/></circle>
+  <!-- Center flash -->
+  <circle cx="160" cy="150" r="6" fill="#ff3333" filter="url(#ge)"><animate attributeName="opacity" values="0.9;0.3;0.9" dur="1s" repeatCount="indefinite"/></circle>
+  <circle cx="160" cy="150" r="3" fill="#ffffff"><animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" repeatCount="indefinite"/></circle>
+  <!-- Alert triangles surrounding -->
+  <g opacity="0.35"><path d="M30,70 L40,55 L50,70 Z" fill="none" stroke="#ff3333" stroke-width="1" stroke-linejoin="round"><animate attributeName="opacity" values="0.35;0.1;0.35" dur="0.8s" repeatCount="indefinite"/></path><path d="M270,70 L280,55 L290,70 Z" fill="none" stroke="#ff3333" stroke-width="1" stroke-linejoin="round"><animate attributeName="opacity" values="0.35;0.1;0.35" dur="0.8s" begin="0.2s" repeatCount="indefinite"/></path><path d="M30,260 L40,245 L50,260 Z" fill="none" stroke="#ff3333" stroke-width="1" stroke-linejoin="round"><animate attributeName="opacity" values="0.35;0.1;0.35" dur="0.8s" begin="0.4s" repeatCount="indefinite"/></path><path d="M270,260 L280,245 L290,260 Z" fill="none" stroke="#ff3333" stroke-width="1" stroke-linejoin="round"><animate attributeName="opacity" values="0.35;0.1;0.35" dur="0.8s" begin="0.6s" repeatCount="indefinite"/></path></g>
+  <!-- Siren wave arcs -->
+  <path d="M70,110 Q60,95 70,80" fill="none" stroke="#ff3333" stroke-width="0.8" opacity="0.3"><animate attributeName="opacity" values="0.3;0.08;0.3" dur="1.5s" repeatCount="indefinite"/></path>
+  <path d="M55,120 Q40,100 55,75" fill="none" stroke="#ff3333" stroke-width="0.6" opacity="0.2"><animate attributeName="opacity" values="0.2;0.05;0.2" dur="1.5s" begin="0.3s" repeatCount="indefinite"/></path>
+  <path d="M250,110 Q260,95 250,80" fill="none" stroke="#ff3333" stroke-width="0.8" opacity="0.3"><animate attributeName="opacity" values="0.3;0.08;0.3" dur="1.5s" begin="0.5s" repeatCount="indefinite"/></path>
+  <path d="M265,120 Q280,100 265,75" fill="none" stroke="#ff3333" stroke-width="0.6" opacity="0.2"><animate attributeName="opacity" values="0.2;0.05;0.2" dur="1.5s" begin="0.8s" repeatCount="indefinite"/></path>
+  <!-- Emergency cross -->
+  <g opacity="0.4" transform="translate(140,260)"><rect x="5" y="0" width="10" height="30" rx="2" fill="none" stroke="#ff3333" stroke-width="1"/><rect x="0" y="5" width="20" height="20" rx="2" fill="none" stroke="#ff3333" stroke-width="1"/></g>
+  <!-- Corner brackets -->
+  <g stroke="#ff3333" stroke-width="1.5" opacity="0.35"><polyline points="8,28 8,8 28,8" fill="none"/><polyline points="292,8 312,8 312,28" fill="none"/><polyline points="312,292 312,312 292,312" fill="none"/><polyline points="28,312 8,312 8,292" fill="none"/></g>
+  <!-- Horizontal scan lines -->
+  <g opacity="0.04" stroke="#ff3333" stroke-width="0.5"><line x1="90" y1="50" x2="230" y2="50"/><line x1="90" y1="60" x2="230" y2="60"/><line x1="90" y1="70" x2="230" y2="70"/><line x1="90" y1="80" x2="230" y2="80"/><line x1="90" y1="90" x2="230" y2="90"/><line x1="90" y1="100" x2="230" y2="100"/></g>
+</svg>
