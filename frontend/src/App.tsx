@@ -8,9 +8,12 @@ import { ScenarioControls } from "./components/ScenarioControls";
 import { AgentChatPanel } from "./components/AgentChatPanel";
 import { DecisionPanel } from "./components/DecisionPanel";
 import { AgentTeamPage } from "./components/AgentTeamPage";
+import { AgentFlashBar } from "./components/AgentFlashBar";
+import { AgentDetailPage } from "./components/AgentDetailPage";
+import { SystemIcon } from "./components/AgentIcons";
 
 /** Simple page-level routing via state. No router library needed. */
-type Page = "dashboard" | "agent-team";
+type Page = "dashboard" | "agent-team" | "agent-detail";
 
 /** Connection status derived from error + lastUpdated state. */
 function useConnectionStatus(error: string | null, lastUpdated: string | null) {
@@ -112,6 +115,7 @@ function App(): React.ReactElement {
               </span>
             </h1>
           </div>
+          <AgentFlashBar onNavigate={() => setPage("agent-detail")} />
           <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)" }}>
             <button
               onClick={() => setPage("dashboard")}
@@ -132,12 +136,69 @@ function App(): React.ReactElement {
                 boxShadow: "var(--shadow-sm)",
               }}
             >
-              <span style={{ fontSize: "0.7rem" }}>←</span>
+              <SystemIcon type="chevron-left" size={12} />
               DASHBOARD
             </button>
           </div>
         </header>
-        <AgentTeamPage />
+        <AgentTeamPage onAgentClick={() => setPage("agent-detail")} />
+      </div>
+    );
+  }
+
+  // ── Agent detail page ────────────────────────────────────────────
+  if (page === "agent-detail") {
+    return (
+      <div className="atc-agent-team-page">
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "var(--sp-2) var(--sp-4)",
+            backgroundColor: "var(--bg-mid)",
+            borderBottom: "1px solid var(--border-mid)",
+            flexShrink: 0,
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+            position: "relative",
+            zIndex: 10,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
+            <FaviconIcon />
+            <h1 style={{ fontSize: "var(--fs-header)", fontWeight: 600, margin: 0, letterSpacing: "0.1em" }}>
+              ATC GUARDIAN{" "}
+              <span style={{ fontSize: "var(--fs-meta)", color: "var(--text-dim)", fontWeight: 400 }}>
+                AI-assisted, human-decided
+              </span>
+            </h1>
+          </div>
+          <AgentFlashBar />
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)" }}>
+            <button
+              onClick={() => setPage("agent-team")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--sp-1)",
+                padding: "var(--sp-1) var(--sp-3)",
+                backgroundColor: "var(--bg-surface)",
+                border: "1px solid var(--border-mid)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--color-nominal)",
+                fontSize: "var(--fs-meta)",
+                fontFamily: "var(--font-mono)",
+                cursor: "pointer",
+                letterSpacing: "0.04em",
+                boxShadow: "var(--shadow-sm)",
+              }}
+            >
+              <SystemIcon type="chevron-left" size={12} />
+              TEAM
+            </button>
+          </div>
+        </header>
+        <AgentDetailPage onBack={() => setPage("agent-team")} />
       </div>
     );
   }
@@ -164,7 +225,10 @@ function App(): React.ReactElement {
             borderBottom: "1px solid rgba(255,51,51,0.15)",
           }}
         >
-          <span style={{ flex: 1 }}>⚠ {error}</span>
+          <span style={{ flex: 1, display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <SystemIcon type="warning" size={12} color="var(--color-critical)" />
+            {error}
+          </span>
           <button
             onClick={() => setDismissedError(error)}
             style={{
@@ -208,6 +272,7 @@ function App(): React.ReactElement {
             </span>
           </h1>
         </div>
+        <AgentFlashBar onNavigate={() => setPage("agent-detail")} />
         <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", fontSize: "var(--fs-body)", color: "var(--text-secondary)" }}>
           <span>{scenarioId} | T+{Math.round(elapsedSeconds)}s</span>
           <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
@@ -262,7 +327,7 @@ function App(): React.ReactElement {
             }}
           >
             AGENT TEAM
-            <span style={{ fontSize: "0.6rem", opacity: 0.6 }}>→</span>
+            <SystemIcon type="chevron-right" size={12} color="var(--color-nominal)" />
           </button>
         </div>
       </header>
@@ -433,7 +498,7 @@ function App(): React.ReactElement {
                       borderRadius: "var(--radius-sm)",
                       backgroundColor: "rgba(255, 51, 51, 0.2)",
                       fontSize: "0.6rem",
-                    }}>⚠</span>
+                    }}><SystemIcon type="warning" size={10} color="var(--color-critical)" /></span>
                     EMERGENCIES ({emergencies.length})
                   </div>
                   {emergencies.map((e) => (
@@ -480,7 +545,7 @@ function App(): React.ReactElement {
                       borderRadius: "var(--radius-sm)",
                       backgroundColor: "rgba(255, 170, 0, 0.15)",
                       fontSize: "0.6rem",
-                    }}>◆</span>
+                    }}><SystemIcon type="diamond" size={10} color="var(--color-warning)" /></span>
                     CONFLICTS ({conflicts.length})
                   </div>
                   {conflicts.map((c) => {
@@ -540,7 +605,7 @@ function App(): React.ReactElement {
 
               {emergencies.length === 0 && conflicts.length === 0 && (
                 <div className="atc-empty-state">
-                  <div className="atc-empty-state-icon">✓</div>
+                  <div className="atc-empty-state-icon"><SystemIcon type="check" size={16} color="var(--color-nominal)" /></div>
                   <div className="atc-empty-state-title">All clear</div>
                   <div className="atc-empty-state-desc">No active conflicts or emergencies</div>
                 </div>
