@@ -1,7 +1,6 @@
 # Render deployment config for the ATC Guardian backend.
 # Docs: https://render.com/docs/blueprint-spec
 # Deploys the FastAPI app as a web service. Set the environment variables
-# from .env.example in the Render dashboard (or via a secret group).
 # All 6 Band agents run as in-process asyncio tasks — no separate services needed.
 
 services:
@@ -21,18 +20,15 @@ services:
       - key: SIMULATION_INTERVAL_SECONDS
         value: "4.0"
       - key: CORS_ORIGIN
-        # Set this to your Vercel frontend URL after deploying it.
         sync: false
       - key: LLM_PROVIDER
         value: openrouter
-      # Secrets — set in the Render dashboard (or via a secret group):
       - key: OPENROUTER_API_KEY
         sync: false
       - key: BAND_API_KEY
         sync: false
       - key: BAND_ROOM_ID
         sync: false
-      # --- 6 Agent credentials (must all be set for embedded runner) ---
       - key: COORDINATOR_AGENT_ID
         sync: false
       - key: COORDINATOR_API_KEY

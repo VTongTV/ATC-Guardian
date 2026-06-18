@@ -235,110 +235,100 @@ export function AgentDetailPage({ onBack }: AgentDetailPageProps): React.ReactEl
         BACK
       </button>
 
-      {/* Bento grid */}
+      {/* Bento grid - Symmetrical 2x3 Layout */}
       <div className="agent-bento">
-        {/* ── Cell 1: Hero + SVG illustration (spans 2 cols) ── */}
-        <div className="agent-bento-hero" style={{ "--agent-color": color } as React.CSSProperties}>
-          <div className="agent-bento-hero-info">
-            <div className="agent-bento-hero-icon">
-              <AgentIcon handle={handle} size={28} color={color} />
+        {/* ── Cell 1: Identity ── */}
+        <div className="agent-bento-identity" style={{ "--agent-color": color, display: 'flex', flexDirection: 'column', justifyContent: 'center' } as React.CSSProperties}>
+          <div className="agent-bento-hero-info" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+            <div className="agent-bento-hero-icon" style={{ width: 72, height: 72 }}>
+              <AgentIcon handle={handle} size={36} color={color} />
             </div>
-            <div>
-              <h2 className="agent-bento-hero-title" style={{ color }}>
+            <div style={{ marginTop: 'var(--sp-4)' }}>
+              <h2 className="agent-bento-hero-title" style={{ color, fontSize: '1.8rem' }}>
                 {shortLabel}
               </h2>
-              <div className="agent-bento-hero-label">
+              <div className="agent-bento-hero-label" style={{ fontSize: '1.1rem', marginTop: 'var(--sp-2)' }}>
                 {node?.label ?? handle}
               </div>
-              {node?.framework && (
-                <div className="agent-bento-hero-framework">
-                  {node.framework}{node.framework_note ? ` — ${node.framework_note}` : ""}
-                </div>
-              )}
+              <div className="agent-bento-hero-framework" style={{ marginTop: 'var(--sp-3)', padding: '6px 10px', backgroundColor: 'var(--bg-mid)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-dim)', display: 'inline-block', fontSize: 'var(--fs-meta)' }}>
+                {node?.framework ?? "Custom Agentic Workflow"}{node?.framework_note ? ` — ${node.framework_note}` : ""}
+              </div>
             </div>
-          </div>
-          <div className="agent-bento-hero-svg">
-            {svgSrc && <img src={svgSrc} alt={`${handle} illustration`} />}
           </div>
         </div>
 
-        {/* ── Cell 2: Model Info ── */}
-        {model && (
-          <div className="agent-bento-model" style={{ "--agent-color": color } as React.CSSProperties}>
-            <div className="agent-bento-cell-title">Model</div>
-            <div className="agent-bento-model-id">{model.primary}</div>
-            <div className="agent-bento-model-props">
-              <div className="agent-bento-model-prop">
+        {/* ── Cell 2: Illustration (SVG) ── */}
+        <div className="agent-bento-illustration" style={{ "--agent-color": color, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '240px' } as React.CSSProperties}>
+          {svgSrc && <img src={svgSrc} alt={`${handle} illustration`} style={{ width: '100%', maxWidth: '280px', maxHeight: '280px', objectFit: 'contain', filter: `drop-shadow(0 0 20px ${color}33)` }} />}
+        </div>
+
+        {/* ── Cell 3: Role ── */}
+        {details && (
+          <div className="agent-bento-role" style={{ "--agent-color": color } as React.CSSProperties}>
+            <div className="agent-bento-cell-title">Role</div>
+            <div className="agent-bento-role-text" style={{ fontSize: 'var(--fs-body)', lineHeight: 1.7 }}>{details.role}</div>
+          </div>
+        )}
+
+        {/* ── Cell 4: Telemetry & Model ── */}
+        <div className="agent-bento-stats" style={{ "--agent-color": color } as React.CSSProperties}>
+          <div className="agent-bento-cell-title">Telemetry & Model</div>
+          <div className="agent-bento-stat" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+            <span className="agent-bento-stat-key">Recent messages</span>
+            <span className="agent-bento-stat-val" style={{ color, fontWeight: 700, fontSize: '1.2rem' }}>{msgCount}</span>
+          </div>
+          <div className="agent-bento-stat">
+            <span className="agent-bento-stat-key">Agent color</span>
+            <span className="agent-bento-stat-val" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
+              <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: color, display: "inline-block", boxShadow: `0 0 8px ${color}` }} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-micro)" }}>{color}</span>
+            </span>
+          </div>
+          {model && (
+            <div className="agent-bento-model-props" style={{ marginTop: 'var(--sp-4)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--border-dim)' }}>
+              <div className="agent-bento-model-prop" style={{ marginBottom: 'var(--sp-2)' }}>
+                <span className="agent-bento-model-prop-key">Model ID</span>
+                <span className="agent-bento-model-prop-val" style={{ color: 'var(--text-primary)' }}>{model.primary}</span>
+              </div>
+              <div className="agent-bento-model-prop" style={{ marginBottom: 'var(--sp-2)' }}>
                 <span className="agent-bento-model-prop-key">Provider</span>
                 <span className="agent-bento-model-prop-val">{model.provider}</span>
-              </div>
-              <div className="agent-bento-model-prop">
-                <span className="agent-bento-model-prop-key">Reasoning</span>
-                <span className="agent-bento-model-prop-val">{model.reasoning}</span>
               </div>
               <div className="agent-bento-model-prop">
                 <span className="agent-bento-model-prop-key">Max Tokens</span>
                 <span className="agent-bento-model-prop-val">{model.maxTokens}</span>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* ── Cell 3: Role ── */}
-        {details && (
-          <div className="agent-bento-role" style={{ "--agent-color": color } as React.CSSProperties}>
-            <div className="agent-bento-cell-title">Role</div>
-            <div className="agent-bento-role-text">{details.role}</div>
-          </div>
-        )}
-
-        {/* ── Cell 4: Capabilities ── */}
+        {/* ── Cell 5: Capabilities ── */}
         {details && (
           <div className="agent-bento-caps" style={{ "--agent-color": color } as React.CSSProperties}>
             <div className="agent-bento-cell-title">Capabilities</div>
             <ul className="agent-bento-list">
               {details.capabilities.map((cap, i) => (
-                <li key={i}>
-                  <span style={{ color, fontWeight: 700 }}>▸</span> {cap}
+                <li key={i} style={{ marginBottom: 'var(--sp-2)' }}>
+                  <span style={{ color, fontWeight: 700, marginRight: 'var(--sp-1)' }}>▸</span> {cap}
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* ── Cell 5: Communications ── */}
+        {/* ── Cell 6: Communications ── */}
         {details && (
           <div className="agent-bento-comms" style={{ "--agent-color": color } as React.CSSProperties}>
             <div className="agent-bento-cell-title">Communications</div>
             <ul className="agent-bento-list">
               {details.communications.map((comm, i) => (
-                <li key={i}>
-                  <span style={{ color: "var(--color-info)", fontWeight: 700 }}>▸</span> {comm}
+                <li key={i} style={{ marginBottom: 'var(--sp-2)' }}>
+                  <span style={{ color: "var(--color-info)", fontWeight: 700, marginRight: 'var(--sp-1)' }}>▸</span> {comm}
                 </li>
               ))}
             </ul>
           </div>
         )}
-
-        {/* ── Cell 6: Live Stats ── */}
-        <div className="agent-bento-stats" style={{ "--agent-color": color } as React.CSSProperties}>
-          <div className="agent-bento-cell-title">Live Stats</div>
-          <div className="agent-bento-stat">
-            <span className="agent-bento-stat-key">Recent messages</span>
-            <span className="agent-bento-stat-val" style={{ color }}>{msgCount}</span>
-          </div>
-          <div className="agent-bento-stat">
-            <span className="agent-bento-stat-key">Framework</span>
-            <span className="agent-bento-stat-val">{node?.framework ?? "—"}</span>
-          </div>
-          <div className="agent-bento-stat">
-            <span className="agent-bento-stat-key">Agent color</span>
-            <span className="agent-bento-stat-val" style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
-              <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: color, display: "inline-block" }} />
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-micro)" }}>{color}</span>
-            </span>
-          </div>
-        </div>
       </div>
     </div>
   );
