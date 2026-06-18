@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" fill="none">
+  <defs>
+    <radialGradient id="wg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffaa00" stop-opacity="0.1"/><stop offset="100%" stop-color="#ffaa00" stop-opacity="0"/></radialGradient>
+    <filter id="gf"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <!-- Grid -->
+  <g stroke="#ffaa00" stroke-width="0.3" opacity="0.06"><line x1="0" y1="40" x2="320" y2="40"/><line x1="0" y1="80" x2="320" y2="80"/><line x1="0" y1="120" x2="320" y2="120"/><line x1="0" y1="160" x2="320" y2="160"/><line x1="0" y1="200" x2="320" y2="200"/><line x1="0" y1="240" x2="320" y2="240"/><line x1="0" y1="280" x2="320" y2="280"/><line x1="40" y1="0" x2="40" y2="320"/><line x1="80" y1="0" x2="80" y2="320"/><line x1="120" y1="0" x2="120" y2="320"/><line x1="160" y1="0" x2="160" y2="320"/><line x1="200" y1="0" x2="200" y2="320"/><line x1="240" y1="0" x2="240" y2="320"/><line x1="280" y1="0" x2="280" y2="320"/></g>
+  <!-- Radial glow -->
+  <circle cx="160" cy="140" r="130" fill="url(#wg)"/>
+  <!-- Warning triangle outer -->
+  <path d="M160,25 L285,230 H35 Z" stroke="#ffaa00" stroke-width="2" stroke-linejoin="round" opacity="0.7"><animate attributeName="opacity" values="0.7;0.4;0.7" dur="2s" repeatCount="indefinite"/></path>
+  <!-- Inner triangle -->
+  <path d="M160,50 L265,218 H55 Z" fill="#ffaa00" fill-opacity="0.02" stroke="#ffaa00" stroke-width="0.8" opacity="0.3"/>
+  <!-- Second triangle echo -->
+  <path d="M160,35 L275,224 H45 Z" stroke="#ffaa00" stroke-width="0.5" stroke-linejoin="round" opacity="0.15"><animate attributeName="opacity" values="0.15;0.05;0.15" dur="3s" repeatCount="indefinite"/></path>
+  <!-- Exclamation mark -->
+  <g filter="url(#gf)"><line x1="160" y1="85" x2="160" y2="155" stroke="#ffaa00" stroke-width="5" stroke-linecap="round"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></line><circle cx="160" cy="178" r="5" fill="#ffaa00"><animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/></circle></g>
+  <!-- Pulse rings from triangle center -->
+  <circle cx="160" cy="140" r="20" fill="none" stroke="#ffaa00" stroke-width="1.5"><animate attributeName="r" from="20" to="100" dur="2.5s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.5" to="0" dur="2.5s" repeatCount="indefinite"/></circle>
+  <circle cx="160" cy="140" r="20" fill="none" stroke="#ffaa00" stroke-width="1"><animate attributeName="r" from="20" to="100" dur="2.5s" begin="0.8s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.4" to="0" dur="2.5s" begin="0.8s" repeatCount="indefinite"/></circle>
+  <circle cx="160" cy="140" r="20" fill="none" stroke="#ffaa00" stroke-width="0.7"><animate attributeName="r" from="20" to="100" dur="2.5s" begin="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" from="0.3" to="0" dur="2.5s" begin="1.6s" repeatCount="indefinite"/></circle>
+  <!-- Converging aircraft vectors -->
+  <g opacity="0.7"><line x1="30" y1="280" x2="135" y2="160" stroke="#ffaa00" stroke-width="1.2" stroke-dasharray="5 3"><animate attributeName="stroke-dashoffset" from="80" to="0" dur="1.5s" repeatCount="indefinite"/></line><polygon points="135,160 126,165 130,155" fill="#ffaa00" opacity="0.8"/><line x1="290" y1="280" x2="185" y2="160" stroke="#ffaa00" stroke-width="1.2" stroke-dasharray="5 3"><animate attributeName="stroke-dashoffset" from="80" to="0" dur="1.5s" begin="0.4s" repeatCount="indefinite"/></line><polygon points="185,160 194,165 190,155" fill="#ffaa00" opacity="0.8"/></g>
+  <!-- CPA circle -->
+  <circle cx="160" cy="158" r="14" fill="none" stroke="#ff3333" stroke-width="0.8" stroke-dasharray="3 2" opacity="0.6"><animate attributeName="opacity" values="0.6;0.2;0.6" dur="1.5s" repeatCount="indefinite"/></circle>
+  <circle cx="160" cy="158" r="8" fill="none" stroke="#ff3333" stroke-width="0.5" opacity="0.4"/>
+  <!-- Aircraft silhouettes on vectors -->
+  <g opacity="0.5"><g style="transform-origin:80px 220px"><animateTransform attributeName="transform" type="rotate" from="-30 80 220" to="-30 80 220" dur="1s" repeatCount="indefinite"/><path d="M80,213 L83,218 L90,220 L83,221 L82,226 L80,228 L78,226 L77,221 L70,220 L77,218 Z" fill="none" stroke="#ffaa00" stroke-width="0.8"/></g><g style="transform-origin:240px 220px"><animateTransform attributeName="transform" type="rotate" from="30 240 220" to="30 240 220" dur="1s" repeatCount="indefinite"/><path d="M240,213 L243,218 L250,220 L243,221 L242,226 L240,228 L238,226 L237,221 L230,220 L237,218 Z" fill="none" stroke="#ffaa00" stroke-width="0.8"/></g></g>
+  <!-- Warning dots along edges -->
+  <circle cx="160" cy="25" r="2" fill="#ffaa00" opacity="0.6"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="1s" repeatCount="indefinite"/></circle>
+  <circle cx="35" cy="230" r="2" fill="#ffaa00" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="1s" begin="0.3s" repeatCount="indefinite"/></circle>
+  <circle cx="285" cy="230" r="2" fill="#ffaa00" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="1s" begin="0.6s" repeatCount="indefinite"/></circle>
+  <!-- Scan line horizontal -->
+  <rect x="35" y="0" width="250" height="1.5" fill="#ffaa00" opacity="0.15"><animate attributeName="y" from="25" to="235" dur="3s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.15;0.05;0.15" dur="3s" repeatCount="indefinite"/></rect>
+  <!-- Scan line vertical -->
+  <rect x="0" y="25" width="1.5" height="210" fill="#ffaa00" opacity="0.1"><animate attributeName="x" from="35" to="285" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.1;0.03;0.1" dur="4s" repeatCount="indefinite"/></rect>
+  <!-- Corner brackets -->
+  <g stroke="#ffaa00" stroke-width="1.5" opacity="0.35"><polyline points="8,28 8,8 28,8" fill="none"/><polyline points="292,8 312,8 312,28" fill="none"/><polyline points="312,292 312,312 292,312" fill="none"/><polyline points="28,312 8,312 8,292" fill="none"/></g>
+  <!-- Side warning indicators -->
+  <g opacity="0.5"><rect x="15" y="130" width="6" height="20" rx="1" fill="none" stroke="#ffaa00" stroke-width="0.8"/><rect x="17" y="135" width="2" height="6" rx="0.5" fill="#ffaa00"><animate attributeName="opacity" values="1;0.2;1" dur="0.8s" repeatCount="indefinite"/></rect><rect x="299" y="130" width="6" height="20" rx="1" fill="none" stroke="#ffaa00" stroke-width="0.8"/><rect x="301" y="135" width="2" height="6" rx="0.5" fill="#ffaa00"><animate attributeName="opacity" values="1;0.2;1" dur="0.8s" begin="0.4s" repeatCount="indefinite"/></rect></g>
+  <!-- Bottom status bar indicators -->
+  <g opacity="0.4"><circle cx="100" cy="285" r="3" fill="#ffaa00"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="0.5s" repeatCount="indefinite"/></circle><circle cx="120" cy="285" r="2" fill="#ff3333"><animate attributeName="opacity" values="0.8;0.2;0.8" dur="0.7s" repeatCount="indefinite"/></circle><circle cx="136" cy="285" r="2" fill="#ffaa00"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="1.2s" repeatCount="indefinite"/></circle><line x1="90" y1="285" x2="148" y2="285" stroke="#ffaa00" stroke-width="0.3" opacity="0.3"/></g>
+  <!-- Crosshair on CPA -->
+  <line x1="152" y1="158" x2="168" y2="158" stroke="#ff3333" stroke-width="0.8" opacity="0.5"/><line x1="160" y1="150" x2="160" y2="166" stroke="#ff3333" stroke-width="0.8" opacity="0.5"/>
+</svg>
