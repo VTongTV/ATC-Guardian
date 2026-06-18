@@ -182,6 +182,153 @@ html, body, #root {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Agent Icon Animations ──────────────────────────────────────── */
+
+/* Coordinator — radar sweep line rotating inside crosshair */
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Conflict detector — alert exclamation pulsing */
+@keyframes alert-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+/* Weather analyst — lightning bolt flashing */
+@keyframes lightning-flash {
+  0%, 40%, 100% { opacity: 0; }
+  45%, 55%      { opacity: 1; }
+}
+
+/* Ground ops — aircraft banking side to side */
+@keyframes aircraft-bank {
+  0%, 100% { transform: rotate(-5deg); }
+  50%      { transform: rotate(5deg); }
+}
+
+/* Emergency response — beacon rays rotating */
+@keyframes beacon-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Emergency response — dome pulsing */
+@keyframes beacon-dome-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+/* Safety reviewer — shield checkmark drawing in */
+@keyframes shield-draw {
+  from { stroke-dashoffset: 24; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* System ingest — signal arcs expanding outward */
+@keyframes signal-arc {
+  0%   { opacity: 0.9; transform: scale(0.85); }
+  100% { opacity: 0;   transform: scale(1.3); }
+}
+
+/* Robot fallback — eyes blinking */
+@keyframes eye-blink {
+  0%, 95%, 100% { transform: scaleY(1); }
+  97%           { transform: scaleY(0.1); }
+}
+
+/* Honour user motion-preference: disable agent icon motion */
+@media (prefers-reduced-motion: reduce) {
+  .agent-icon-anim,
+  .agent-icon-anim * {
+    animation: none !important;
+  }
+}
+
+/* ─── Agent Flash Bar ────────────────────────────────────────────── */
+.agent-flash-bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.agent-flash-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-mid);
+  background-color: var(--bg-surface);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.agent-flash-chip:hover {
+  background-color: var(--bg-raised);
+  border-color: var(--border-bright);
+  box-shadow: var(--shadow-sm);
+}
+.agent-flash-chip--active {
+  border-color: var(--color-nominal);
+  background-color: rgba(51, 255, 51, 0.1);
+  box-shadow: var(--shadow-glow-sm);
+}
+
+/* ─── Agent Detail Page ──────────────────────────────────────────── */
+.agent-detail-page {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-6);
+  gap: var(--sp-6);
+  overflow-y: auto;
+  flex: 1;
+}
+.agent-detail-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+}
+.agent-detail-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-xl);
+  border: 2px solid var(--border-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-md);
+}
+.agent-detail-section {
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+}
+.agent-detail-section-title {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--color-nominal);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-3);
+  animation: glow-phosphor 4s ease-in-out infinite;
+}
+.agent-detail-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--sp-1) 0;
+  border-bottom: 1px solid var(--border-dim);
+  font-size: var(--fs-meta);
+}
+.agent-detail-stat:last-child {
+  border-bottom: none;
+}
+
 /* ─── Utility Classes ────────────────────────────────────────────── */
 
 .atc-panel-title {

@@ -46,6 +46,12 @@ export interface AtcState {
    *  whenever a new reply lands in AGENT COMMS. */
   lastReplyAgent: string | null;
   lastReplyTick: number;
+
+  /** Handle of the currently selected agent (for detail page). */
+  selectedAgentHandle: string | null;
+
+  /** Handle of the agent to filter comms panel by (null = show all). */
+  chatFilterAgent: string | null;
 }
 
 /** Actions for mutating ATC state. */
@@ -71,6 +77,12 @@ export interface AtcActions {
   /** Record that a new reply from the given agent just arrived. Bumps a
    *  tick so subscribers can detect changes even for repeated senders. */
   noteAgentReply: (agentName: string) => void;
+
+  /** Select an agent handle for the detail page, or deselect if null. */
+  setSelectedAgentHandle: (handle: string | null) => void;
+
+  /** Set the comms panel filter to a specific agent, or null for all. */
+  setChatFilterAgent: (handle: string | null) => void;
 }
 
 const initialState: AtcState = {
@@ -88,6 +100,8 @@ const initialState: AtcState = {
   selectedCallsign: null,
   lastReplyAgent: null,
   lastReplyTick: 0,
+  selectedAgentHandle: null,
+  chatFilterAgent: null,
 };
 
 export type AtcStore = AtcState & AtcActions;
@@ -127,6 +141,12 @@ export const useAtcStore = create<AtcStore>()((set) => ({
 
   noteAgentReply: (agentName: string) =>
     set({ lastReplyAgent: agentName, lastReplyTick: Date.now() }),
+
+  setSelectedAgentHandle: (handle: string | null) =>
+    set({ selectedAgentHandle: handle }),
+
+  setChatFilterAgent: (handle: string | null) =>
+    set({ chatFilterAgent: handle }),
 
   reset: () => set(initialState),
 }));
