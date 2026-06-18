@@ -10,7 +10,7 @@ services:
     pythonVersion: "3.12"
     buildCommand: pip install uv && uv sync
     startCommand: uv run uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /data/simulated
+    healthCheckPath: /data/healthz
     initialDelaySeconds: 30
     autoDeploy: true
     envVars:

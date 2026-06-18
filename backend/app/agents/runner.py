@@ -412,7 +412,16 @@ async def launch_agents() -> tuple[list[asyncio.Task], list[str]]:
     for entry in _AGENTS:
         name = entry["name"]
         try:
-            _, band_agent = _build_agent(entry)
+            # Build in a worker thread so the synchronous heavy imports
+            # (LangChain/CrewAI/litellm/PydanticAI cold-import + adapter
+            # construction) do NOT starve the event loop. Without this, the
+            # ~20-30s of blocking work during /demo/start freezes the whole
+            # process — including Render's health-check probe to /healthz,
+            # which then fails the instance (5s timeout) and 503s all traffic.
+            _, band_agent = await asyncio.to_thread(_build_agent, entry)
+            # Yield between agents so health checks and other requests keep
+            # being serviced throughout the launch sequence.
+            await asyncio.sleep(0)
             task = asyncio.create_task(
                 _run_agent(name, band_agent),
                 name=f"agent-{name}",

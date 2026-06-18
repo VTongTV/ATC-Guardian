@@ -70,6 +70,18 @@ def _get_service() -> SimulationService:
     return _simulation_service
 
 
+@router.get("/healthz")
+async def healthz() -> dict[str, str]:
+    """Lightweight liveness probe.
+
+    Returns immediately regardless of simulation/agent state. Used as the
+    Render health-check target so that synchronous work on the event loop
+    (e.g. agent construction during /demo/start) cannot be mistaken for a
+    dead instance. Intentionally touches no service state.
+    """
+    return {"status": "ok"}
+
+
 @router.get("/simulated", response_model=RadarSnapshot)
 async def get_simulated_data() -> RadarSnapshot:
     """Return the current simulated radar snapshot.
