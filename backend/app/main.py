@@ -36,53 +36,6 @@ from shared.band_client import SimulatedBandClient, create_band_client
 logger = logging.getLogger(__name__)
 
 
-def _warn_if_live_agents_not_running(settings, mention_map: dict[str, str]) -> None:
-    """Emit a loud banner when live mode has no listening specialist agents.
-
-    In ``BAND_MODE=live`` the backend only *posts* ``@mentions`` into the
-    Band room; it does not run the LLMs. The six specialist agents are
-    standalone processes (``agents/<name>/agent.py``) that connect to Band
-    over WebSocket and actually answer. If they are not running, the room
-    fills with "Coordinator" dispatches that nobody replies to and the
-    AGENT COMMS panel stays at (0) — which is the most common live-mode
-    misconfiguration.
-
-    When ``start.py`` launches agents before the backend, it sets the
-    ``LABLAB_AGENTS_LAUNCHED`` env var so this banner is suppressed.
-
-    Args:
-        settings: Loaded application settings (read for band_mode + keys).
-        mention_map: Handle → agent UUID map (logged for cross-checking).
-    """
-    if settings.band_mode != "live":
-        return
-
-    mapped = sum(1 for v in mention_map.values() if v)
-
-    # If start.py launched agents for us, skip the big warning.
-    if os.environ.get("LABLAB_AGENTS_LAUNCHED"):
-        logger.info(
-            "BAND_MODE=live — agents launched by start.py (%d/%d mapped).",
-            mapped, len(mention_map),
-        )
-        return
-
-    logger.warning("=" * 72)
-    logger.warning("BAND_MODE=live — the backend will POST @mentions to Band,")
-    logger.warning("but the specialist agents are SEPARATE processes that must")
-    logger.warning("be launched independently. Right now the Band room will")
-    logger.warning("receive @conflict-detector / @weather-analyst / @emergency-")
-    logger.warning("response dispatches that NOTHING answers, so AGENT COMMS")
-    logger.warning("will stay at (0) until the agent processes are running.")
-    logger.warning("  -> Launch them:  python scripts/start.py")
-    logger.warning("     (or open a window per agent under agents/<name>/)")
-    logger.warning("  -> Mapped agents: %d/%d handles have a UUID.", mapped, len(mention_map))
-    logger.warning("  -> Backend posts as BAND_API_KEY; if that key is the")
-    logger.warning("     Coordinator's, every posted message will appear as")
-    logger.warning("     \"Coordinator\" in the Band room — this is expected.")
-    logger.warning("=" * 72)
-
-
 async def _collaboration_loop(
     service: SimulationService,
     poster: BandPoster,
@@ -175,26 +128,16 @@ async def lifespan(app: FastAPI):
         mention_map=mention_map,
         owner_user_id=settings.band_owner_user_id,
     )
-    # In live mode, try to launch all 6 Band agents as in-process asyncio
-    # tasks.  This lets the entire system run on a single Render web service
-    # without separate subprocesses.  If agent credentials are missing, we
-    # fall back to the old behaviour (agents must be launched externally).
+    # Live Band agents are NOT connected here. They are launched lazily on
+    # the first /demo/start and fully disconnected on /demo/stop (see
+    # _start_demo_loops_async / _stop_demo_loops_async below). Connecting at
+    # startup was the root cause of a runaway token-burn bug: every time the
+    # Vercel frontend cold-started the Render backend, all 6 agents would
+    # connect to the shared Band room, replay its message backlog, and
+    # @mention-cascade each other — burning ~1-2M tokens/min before any demo
+    # was ever started. Idle (no demo) now means zero connected agents and
+    # zero token spend. See backend/app/agents/runner.py.
     agent_tasks: list[asyncio.Task] = []
-    if settings.band_mode == "live":
-        from backend.app.agents.runner import launch_agents
-
-        try:
-            agent_tasks, agent_errors = await launch_agents()
-            if agent_tasks:
-                os.environ["LABLAB_AGENTS_LAUNCHED"] = "1"
-                logger.info(
-                    "Embedded agent runner: %d agents launched, %d failed",
-                    len(agent_tasks),
-                    len(agent_errors),
-                )
-        except Exception:
-            logger.exception("Embedded agent runner failed — agents must run externally")
-    _warn_if_live_agents_not_running(settings, mention_map)
 
     # Always wire the decision service into sim_agents so that the
     # coordinator handler (and any future agent handler) can create
@@ -237,16 +180,51 @@ async def lifespan(app: FastAPI):
     simulation_task: asyncio.Task | None = None
     collab_task: asyncio.Task | None = None
 
-    def _start_demo_loops() -> None:
-        """Start the simulation + collaboration loops (idempotent)."""
-        nonlocal simulation_task, collab_task
+    async def _start_demo_loops_async() -> None:
+        """Start the simulation + collaboration loops and connect agents.
+
+        Idempotent. On first activation it also launches the 6 live Band
+        agents (``BAND_MODE=live`` only) so they connect to the shared room
+        exactly when the demo begins — never at backend startup. The agents
+        connect before the demo-active flag is flipped so there is no window
+        in which dispatches are sent to agents that are not yet subscribed.
+        """
+        nonlocal simulation_task, collab_task, agent_tasks
         if simulation_task and not simulation_task.done():
             logger.info("Demo loops already running")
             return
-        # Activate agent message processing
+
+        # Launch live agents on demand (first start, or after a stop that
+        # tore them down). Skipped entirely in sim mode and when credentials
+        # are missing — both are logged by launch_agents().
+        if settings.band_mode == "live" and not agent_tasks:
+            from backend.app.agents.runner import launch_agents
+
+            try:
+                agent_tasks, agent_errors = await launch_agents()
+                if agent_tasks:
+                    os.environ["LABLAB_AGENTS_LAUNCHED"] = "1"
+                    logger.info(
+                        "Embedded agent runner: %d agents launched, %d failed",
+                        len(agent_tasks),
+                        len(agent_errors),
+                    )
+            except Exception:
+                logger.exception(
+                    "Embedded agent runner failed — agents must run externally"
+                )
+                agent_tasks = []
+
+        # Flip the gate only after agents exist (defense-in-depth; the
+        # connection lifecycle is the primary gate). Letting the event loop
+        # breathe gives the agents' WebSockets a chance to open before the
+        # poster fires the first dispatch.
         if agent_tasks:
             from backend.app.agents.runner import set_demo_active
+
+            await asyncio.sleep(0)
             set_demo_active(True)
+
         service.is_running = True
         simulation_task = asyncio.create_task(
             service.start_loop(settings.simulation_interval_seconds)
@@ -259,25 +237,31 @@ async def lifespan(app: FastAPI):
         logger.info("Demo loops started — agents will now receive dispatches")
 
     async def _stop_demo_loops_async() -> None:
-        """Stop the simulation + collaboration loops and silence agents.
+        """Stop the simulation + collaboration loops and disconnect agents.
 
-        1. Deactivate the demo flag so agents' _on_execute drops messages.
-        2. Post 2 STOP directive messages to the Band room so agents that
-           are mid-LLM-call see the stop order in their context.
-        3. Cancel the simulation and collaboration loops.
+        This is a hard stop:
+          1. Deactivate the demo-active gate so any in-flight agent message
+             is dropped before the connection tears down.
+          2. Cancel the simulation + collaboration loops (which stops the
+             poster from dispatching any further @mentions).
+          3. Fully disconnect the live agents — cancelling their tasks makes
+             ``agent.run()``'s ``finally`` call ``agent.stop()``, which tears
+             down every execution context and closes the WebSocket. A
+             disconnected agent consumes zero tokens and reads nothing from
+             the shared room, even if it keeps filling with messages.
+
+        We intentionally do NOT post STOP-directive messages into the Band
+        room: that previously added 12 new messages that every connected
+        agent had to process, fuelling the very cascade we are trying to
+        stop. Disconnecting is cheaper, safer, and immediate.
         """
-        nonlocal simulation_task, collab_task
-        # Step 1: Deactivate agent message processing gate
+        nonlocal simulation_task, collab_task, agent_tasks
+        # Step 1: Deactivate the message-processing gate.
         if agent_tasks:
             from backend.app.agents.runner import set_demo_active
+
             set_demo_active(False)
-        # Step 2: Post STOP directives to the Band room
-        try:
-            from backend.app.agents.runner import post_stop_directives
-            await post_stop_directives(band_client)
-        except Exception:
-            logger.exception("Failed to post STOP directives to Band room")
-        # Step 3: Cancel simulation + collab loops
+        # Step 2: Cancel simulation + collab loops (stops new dispatches).
         service.stop_loop()
         poster.reset()
         if simulation_task and not simulation_task.done():
@@ -286,10 +270,20 @@ async def lifespan(app: FastAPI):
             collab_task.cancel()
         simulation_task = None
         collab_task = None
-        logger.info("Demo loops stopped — agents idle until next activation")
+        # Step 3: Disconnect the agents entirely (hard token stop).
+        if agent_tasks:
+            from backend.app.agents.runner import shutdown_agents_async
+
+            await shutdown_agents_async(agent_tasks)
+            agent_tasks = []
+        logger.info("Demo loops stopped — agents disconnected until next activation")
+
+    def _start_demo_loops() -> None:
+        """Sync wrapper — schedules the async start in the event loop."""
+        asyncio.create_task(_start_demo_loops_async())
 
     def _stop_demo_loops() -> None:
-        """Synchronous wrapper — schedules the async stop in the event loop."""
+        """Sync wrapper — schedules the async stop in the event loop."""
         asyncio.create_task(_stop_demo_loops_async())
 
     # Expose start/stop to the data router so /demo/start and /demo/stop
@@ -304,12 +298,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown
-    _stop_demo_loops()
-    # Cancel embedded agent tasks if running
-    if agent_tasks:
-        from backend.app.agents.runner import shutdown_agents
-        shutdown_agents(agent_tasks)
+    # Shutdown — tear down any running demo loops and agents.
+    await _stop_demo_loops_async()
     await band_poller.close()
     await band_client.close()
     await opensky_client.close()
